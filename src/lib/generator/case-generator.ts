@@ -1,4 +1,4 @@
-import { createRng, choice, uniformInt, weightedChoice, logNormalRange, bool, round2, type Rng } from "./rng";
+import { createRng, choice, uniformInt, weightedChoice, logNormalRange, round2, type Rng } from "./rng";
 import { generateEvidenceForCase, tenureBiasForTier, type GeneratedEvidence } from "./evidence";
 import type { CustomerTier, RiskType } from "@/types/domain";
 

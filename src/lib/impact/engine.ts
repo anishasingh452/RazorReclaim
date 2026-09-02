@@ -19,13 +19,13 @@ export interface ImpactEngineInput {
 
 export type ImpactCandidate = Omit<ImpactScore, "id" | "case_id" | "created_at">;
 
-const AUTOMATED_ACTIONS = ["retry", "payment_link", "reminder", "wait_and_retry"] as const;
+type AutomatedAction = "retry" | "payment_link" | "reminder" | "wait_and_retry";
 
 /**
  * Which actions are even feasible to consider for a given risk type.
  * `escalate` and `stop` are always feasible fallbacks.
  */
-function feasibleAutomatedActions(riskType: RiskType): (typeof AUTOMATED_ACTIONS)[number][] {
+function feasibleAutomatedActions(riskType: RiskType): AutomatedAction[] {
   switch (riskType) {
     case "failed_payment":
       return ["retry", "payment_link", "reminder", "wait_and_retry"];
