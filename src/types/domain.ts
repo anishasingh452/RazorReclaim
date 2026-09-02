@@ -1,0 +1,216 @@
+// Core domain types shared across the reasoning, policy, impact, and execution layers.
+// These mirror the Supabase schema in supabase/migrations/0001_init.sql.
+
+export type RiskType =
+  | "failed_payment"
+  | "checkout_abandonment"
+  | "subscription_failure"
+  | "overdue_receivable";
+
+export type CustomerTier = "retail" | "smb" | "b2b";
+
+export type CaseStatus =
+  | "open"
+  | "in_progress"
+  | "awaiting_approval"
+  | "escalated"
+  | "stopped"
+  | "recovered"
+  | "closed"
+  | "failed";
+
+export type ActionType =
+  | "retry"
+  | "payment_link"
+  | "reminder"
+  | "wait_and_retry"
+  | "escalate"
+  | "stop";
+
+export interface Case {
+  id: string;
+  batch_id: string;
+  seq: number;
+  customer_name: string;
+  customer_id: string;
+  customer_email: string;
+  customer_tier: CustomerTier;
+  amount: number;
+  currency: string;
+  risk_type: RiskType;
+  contact_attempts: number;
+  days_since_failure: number;
+  is_synthetic: boolean;
+  status: CaseStatus;
+  final_action: ActionType | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Evidence {
+  id: string;
+  case_id: string;
+  source: "gateway" | "checkout_funnel" | "subscription_engine" | "receivable_ledger" | "customer_profile";
+  payload: Record<string, unknown>;
+  created_at: string;
+}
+
+export type DecisionStage = "root_cause" | "recommend";
+
+export interface Decision {
+  id: string;
+  case_id: string;
+  stage: DecisionStage;
+  ai_output: Record<string, unknown>;
+  confidence: number | null;
+  reasoning: string;
+  model: string;
+  created_at: string;
+}
+
+/** Structured output contract for the root_cause_node LLM call. */
+export interface RootCauseResult {
+  cause: string;
+  category:
+    | "temporary_gateway_failure"
+    | "insufficient_funds"
+    | "card_expired_or_invalid"
+    | "customer_abandoned"
+    | "bank_declined"
+    | "subscription_mandate_failed"
+    | "invoice_dispute"
+    | "unknown";
+  qualitative_recovery_probability: "very_low" | "low" | "medium" | "high" | "very_high";
+  confidence: number; // 0..1
+  reasoning: string;
+}
+
+/** Structured output contract for the recommend_node LLM call. */
+export interface RecommendationResult {
+  suggested_action: ActionType;
+  reasoning: string;
+  confidence: number; // 0..1
+}
+
+export interface ImpactScore {
+  id: string;
+  case_id: string;
+  action_type: ActionType;
+  potential_recoverable_amount: number;
+  recovery_probability: number;
+  intervention_cost: number;
+  expected_recovery_value: number;
+  selected: boolean;
+  created_at: string;
+}
+
+export interface PolicyCheck {
+  id: string;
+  case_id: string;
+  rule_name: string;
+  passed: boolean;
+  detail: string;
+  created_at: string;
+}
+
+export interface PolicyDecision {
+  allowed: boolean;
+  action: ActionType;
+  requiresHuman: boolean;
+  requiresStop: boolean;
+  checks: Omit<PolicyCheck, "id" | "case_id" | "created_at">[];
+}
+
+export type ExecutionProvider = "razorpay" | "resend" | "simulated" | "none";
+export type ExecutionStatus = "pending" | "success" | "failed";
+
+export interface Execution {
+  id: string;
+  case_id: string;
+  action_type: ActionType;
+  provider: ExecutionProvider;
+  external_ref: string | null;
+  status: ExecutionStatus;
+  idempotency_key: string;
+  request_payload: Record<string, unknown> | null;
+  response_payload: Record<string, unknown> | null;
+  created_at: string;
+}
+
+export type VerificationSource = "webhook" | "simulated_trigger" | "poll";
+
+export interface Verification {
+  id: string;
+  case_id: string;
+  execution_id: string;
+  verified: boolean;
+  amount_recovered: number;
+  source: VerificationSource;
+  verified_at: string;
+}
+
+export type ApprovalStatus = "pending" | "approved" | "rejected";
+
+export interface Approval {
+  id: string;
+  case_id: string;
+  requested_action: Record<string, unknown>;
+  status: ApprovalStatus;
+  reviewer: string | null;
+  reviewed_at: string | null;
+  langgraph_thread_id: string;
+  created_at: string;
+}
+
+export type AuditActor = "ai_agent" | "policy_engine" | "impact_engine" | "human" | "system";
+
+export interface AuditEvent {
+  id: string;
+  case_id: string;
+  event_type: string;
+  actor: AuditActor;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+export type BatchStatus = "pending" | "running" | "completed" | "failed";
+
+export interface Batch {
+  id: string;
+  name: string;
+  seed: string;
+  concurrency: number;
+  total_cases: number;
+  total_at_risk: number;
+  total_expected_recovery_value: number;
+  total_recovered: number;
+  status: BatchStatus;
+  started_at: string | null;
+  completed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Per-case graph state threaded through the LangGraph workflow. */
+export interface CaseGraphState {
+  case: Case;
+  evidence: Evidence[];
+  rootCause: RootCauseResult | null;
+  recommendation: RecommendationResult | null;
+  impactScores: Omit<ImpactScore, "id" | "case_id" | "created_at">[];
+  selectedImpact: Omit<ImpactScore, "id" | "case_id" | "created_at"> | null;
+  policyDecision: PolicyDecision | null;
+  executionResult: Execution | null;
+  verification: Verification | null;
+}
+
+/** SSE event shape streamed from the batch orchestrator to the client. */
+export interface BatchStreamEvent {
+  type: "stage_transition" | "batch_metric" | "batch_complete";
+  batchId: string;
+  caseId?: string;
+  stage?: string;
+  status?: string;
+  timestamp: string;
+  detail?: Record<string, unknown>;
+}
