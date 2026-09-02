@@ -11,9 +11,9 @@ import { deferNode } from "./nodes/defer";
 import { executeNode } from "./nodes/execute";
 import { verifyNode } from "./nodes/verify";
 
-type Route = "escalate" | "stop" | "defer" | "execute";
+type PolicyRoute = "escalate" | "stop" | "defer" | "execute";
 
-function routeAfterPolicy(state: CaseGraphState): Route {
+function routeAfterPolicy(state: CaseGraphState): PolicyRoute {
   switch (state.finalAction) {
     case "escalate":
       return "escalate";
@@ -24,6 +24,20 @@ function routeAfterPolicy(state: CaseGraphState): Route {
     default:
       return "execute";
   }
+}
+
+type ExecuteRoute = "verify" | "end";
+
+/**
+ * `retry` is simulated (no real payment vehicle to wait on), so it verifies
+ * synchronously within the same run. `payment_link`/`reminder` create a real
+ * Razorpay Payment Link — verification is asynchronous (webhook or the demo
+ * simulate-payment trigger), so the graph ends here rather than guessing an
+ * outcome. A failed execution (Razorpay/Resend error) also ends here.
+ */
+function routeAfterExecute(state: CaseGraphState): ExecuteRoute {
+  if (state.executionResult?.status === "failed") return "end";
+  return state.finalAction === "retry" ? "verify" : "end";
 }
 
 export function buildCaseGraph() {
@@ -52,7 +66,10 @@ export function buildCaseGraph() {
     .addEdge("escalate", END)
     .addEdge("stop", END)
     .addEdge("defer", END)
-    .addEdge("execute", "verify")
+    .addConditionalEdges("execute", routeAfterExecute, {
+      verify: "verify",
+      end: END,
+    })
     .addEdge("verify", END);
 
   return graph.compile();
