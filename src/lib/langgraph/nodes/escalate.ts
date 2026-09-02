@@ -1,5 +1,6 @@
 import { getServiceClient } from "@/lib/db/service-client";
 import { appendAudit } from "../audit";
+import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import type { CaseGraphState, CaseGraphUpdate } from "../state";
 
 /**
@@ -31,7 +32,7 @@ export async function escalateNode(state: CaseGraphState): Promise<CaseGraphUpda
 
   await supabase.from("cases").update({ status: "awaiting_approval" }).eq("id", state.caseId);
 
-  await appendAudit(state.caseId, "escalated_to_human", "policy_engine", {
+  await appendAudit(state.caseId, AUDIT_EVENT.ESCALATED_TO_HUMAN, "policy_engine", {
     reason: state.policyDecision.checks.filter((c) => !c.passed).map((c) => c.rule_name),
     expected_recovery_value: state.selectedImpact.expected_recovery_value,
   });

@@ -1,6 +1,7 @@
 import { getServiceClient } from "@/lib/db/service-client";
 import { runRecommendation } from "@/lib/ai/recommend";
 import { appendAudit } from "../audit";
+import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import type { CaseGraphState, CaseGraphUpdate } from "../state";
 
 export async function recommendNode(state: CaseGraphState): Promise<CaseGraphUpdate> {
@@ -28,11 +29,17 @@ export async function recommendNode(state: CaseGraphState): Promise<CaseGraphUpd
   });
   if (error) throw new Error(`recommendNode: failed to persist decision: ${error.message}`);
 
-  await appendAudit(state.caseId, "action_recommended", "ai_agent", {
-    suggested_action: result.suggested_action,
-    confidence: result.confidence,
-    model,
-  });
+  await appendAudit(
+    state.caseId,
+    AUDIT_EVENT.AI_RECOMMENDATION,
+    "ai_agent",
+    {
+      suggested_action: result.suggested_action,
+      confidence: result.confidence,
+      evidence_summary: result.evidence_summary,
+    },
+    model
+  );
 
   return { recommendation: result, recommendationModel: model };
 }

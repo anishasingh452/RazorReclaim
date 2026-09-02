@@ -83,7 +83,7 @@ describe("computeImpactScores", () => {
     expect(escLarge.intervention_cost).toBe(8000); // ceiling
   });
 
-  it("only offers risk-type-appropriate automated actions (no `retry` for checkout abandonment)", () => {
+  it("records risk-type-inappropriate actions as infeasible rather than omitting them (`retry` for checkout abandonment)", () => {
     const candidates = computeImpactScores({
       amount: 3_000,
       riskType: "checkout_abandonment",
@@ -91,7 +91,78 @@ describe("computeImpactScores", () => {
       daysSinceFailure: 0,
       rootCause: { qualitative_recovery_probability: "medium" },
     });
-    expect(candidates.map((c) => c.action_type)).not.toContain("retry");
+    const retry = candidates.find((c) => c.action_type === "retry");
+    expect(retry?.feasible).toBe(false);
+    expect(retry?.exclusion_reason).toBeTruthy();
+    expect(retry?.selected).toBe(false);
+    expect(retry?.expected_recovery_value).toBe(0);
+  });
+
+  it("scores voice as a real candidate, universally feasible, priced between reminder and escalate", () => {
+    const candidates = computeImpactScores({
+      amount: 20_000,
+      riskType: "overdue_receivable", // retry/wait_and_retry infeasible here, voice still is
+      contactAttempts: 0,
+      daysSinceFailure: 5,
+      rootCause: { qualitative_recovery_probability: "high" },
+    });
+    const voice = candidates.find((c) => c.action_type === "voice")!;
+    expect(voice.feasible).toBe(true);
+    expect(voice.intervention_cost).toBe(60);
+    expect(voice.expected_recovery_value).toBeGreaterThan(0);
+  });
+
+  it("uses `no_action` (not `stop`) as the zero-cost floor for a case with zero prior contact and zero prior executions", () => {
+    const candidates = computeImpactScores({
+      amount: 50,
+      riskType: "checkout_abandonment",
+      contactAttempts: 0,
+      daysSinceFailure: 60,
+      rootCause: { qualitative_recovery_probability: "very_low" },
+      priorExecutionCount: 0,
+    });
+    const winner = selectedAction(candidates);
+    expect(winner.action_type).toBe("no_action");
+
+    const stop = candidates.find((c) => c.action_type === "stop")!;
+    expect(stop.feasible).toBe(false);
+    expect(stop.exclusion_reason).toBeTruthy();
+  });
+
+  it("uses `stop` (not `no_action`) as the floor once a case has prior contact attempts or executions", () => {
+    const byAttempts = computeImpactScores({
+      amount: 50,
+      riskType: "checkout_abandonment",
+      contactAttempts: 2,
+      daysSinceFailure: 60,
+      rootCause: { qualitative_recovery_probability: "very_low" },
+      priorExecutionCount: 0,
+    });
+    expect(selectedAction(byAttempts).action_type).toBe("stop");
+    const noActionByAttempts = byAttempts.find((c) => c.action_type === "no_action")!;
+    expect(noActionByAttempts.feasible).toBe(false);
+
+    const byExecutions = computeImpactScores({
+      amount: 50,
+      riskType: "checkout_abandonment",
+      contactAttempts: 0,
+      daysSinceFailure: 60,
+      rootCause: { qualitative_recovery_probability: "very_low" },
+      priorExecutionCount: 1,
+    });
+    expect(selectedAction(byExecutions).action_type).toBe("stop");
+  });
+
+  it("defaults priorExecutionCount to 0 when omitted, for backward compatibility with existing callers", () => {
+    const candidates = computeImpactScores({
+      amount: 50,
+      riskType: "checkout_abandonment",
+      contactAttempts: 0,
+      daysSinceFailure: 60,
+      rootCause: { qualitative_recovery_probability: "very_low" },
+      // priorExecutionCount omitted entirely
+    });
+    expect(selectedAction(candidates).action_type).toBe("no_action");
   });
 
   it("decays recovery probability as contact attempts increase, all else equal", () => {

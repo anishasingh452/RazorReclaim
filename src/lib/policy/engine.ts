@@ -23,7 +23,7 @@ export interface PolicyInput {
   hoursSinceLastExecution: number | null;
 }
 
-const COMMUNICATION_ACTIONS: ActionType[] = ["payment_link", "reminder"];
+const COMMUNICATION_ACTIONS: ActionType[] = ["payment_link", "reminder", "voice"];
 
 /**
  * Every rule is evaluated and recorded for audit purposes, even after an
@@ -42,7 +42,8 @@ const COMMUNICATION_ACTIONS: ActionType[] = ["payment_link", "reminder"];
 export function evaluatePolicy(input: PolicyInput): PolicyDecision {
   const checks: PolicyCheckDraft[] = [];
   const isCommunication = COMMUNICATION_ACTIONS.includes(input.candidateAction);
-  const isTerminalCandidate = input.candidateAction === "stop" || input.candidateAction === "escalate";
+  const isTerminalCandidate =
+    input.candidateAction === "stop" || input.candidateAction === "escalate" || input.candidateAction === "no_action";
 
   // 1. Bounded execution — absolute ceiling regardless of action type.
   const boundedOk = input.priorExecutionCount < MAX_TOTAL_EXECUTIONS;

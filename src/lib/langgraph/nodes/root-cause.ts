@@ -1,6 +1,7 @@
 import { getServiceClient } from "@/lib/db/service-client";
 import { runRootCauseReasoning } from "@/lib/ai/root-cause";
 import { appendAudit } from "../audit";
+import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import type { CaseGraphState, CaseGraphUpdate } from "../state";
 
 export async function rootCauseNode(state: CaseGraphState): Promise<CaseGraphUpdate> {
@@ -26,12 +27,18 @@ export async function rootCauseNode(state: CaseGraphState): Promise<CaseGraphUpd
   });
   if (error) throw new Error(`rootCauseNode: failed to persist decision: ${error.message}`);
 
-  await appendAudit(state.caseId, "root_cause_diagnosed", "ai_agent", {
-    category: result.category,
-    qualitative_recovery_probability: result.qualitative_recovery_probability,
-    confidence: result.confidence,
-    model,
-  });
+  await appendAudit(
+    state.caseId,
+    AUDIT_EVENT.AI_DIAGNOSIS,
+    "ai_agent",
+    {
+      category: result.category,
+      qualitative_recovery_probability: result.qualitative_recovery_probability,
+      confidence: result.confidence,
+      evidence_summary: result.evidence_summary,
+    },
+    model
+  );
 
   return { rootCause: result, rootCauseModel: model };
 }

@@ -151,4 +151,59 @@ describe("evaluatePolicy", () => {
     expect(decision.allowed).toBe(true);
     expect(decision.action).toBe("stop");
   });
+
+  it("treats `voice` as a communication action, subject to MAX_COMMUNICATION_ATTEMPTS", () => {
+    const decision = evaluatePolicy({
+      amount: 25_000,
+      contactAttempts: 3,
+      candidateAction: "voice",
+      expectedRecoveryValue: 5_000,
+      priorExecutionCount: 3,
+      hoursSinceLastExecution: 48,
+    });
+    expect(decision.allowed).toBe(false);
+    expect(check(decision, "MAX_COMMUNICATION_ATTEMPTS").passed).toBe(false);
+    expect(check(decision, "MAX_RETRY_ATTEMPTS").passed).toBe(true); // voice isn't a retry
+  });
+
+  it("allows a fresh `voice` call under the communication cap", () => {
+    const decision = evaluatePolicy({
+      amount: 25_000,
+      contactAttempts: 0,
+      candidateAction: "voice",
+      expectedRecoveryValue: 8_000,
+      priorExecutionCount: 0,
+      hoursSinceLastExecution: null,
+    });
+    expect(decision.allowed).toBe(true);
+    expect(decision.action).toBe("voice");
+  });
+
+  it("never gates a `no_action` candidate on communication/harassment/amount rules, same as stop/escalate", () => {
+    const decision = evaluatePolicy({
+      amount: 500_000, // deliberately above the auto-approval limit
+      contactAttempts: 0,
+      candidateAction: "no_action",
+      expectedRecoveryValue: 0,
+      priorExecutionCount: 0,
+      hoursSinceLastExecution: null,
+    });
+    expect(decision.allowed).toBe(true);
+    expect(decision.action).toBe("no_action");
+    expect(decision.requiresHuman).toBe(false);
+    expect(decision.requiresStop).toBe(false);
+  });
+
+  it("still applies BOUNDED_EXECUTION to a `no_action` candidate — no candidate is exempt from the absolute safety ceiling", () => {
+    const decision = evaluatePolicy({
+      amount: 500,
+      contactAttempts: 0,
+      candidateAction: "no_action",
+      expectedRecoveryValue: 0,
+      priorExecutionCount: 5,
+      hoursSinceLastExecution: 200,
+    });
+    expect(decision.allowed).toBe(false);
+    expect(decision.action).toBe("stop");
+  });
 });

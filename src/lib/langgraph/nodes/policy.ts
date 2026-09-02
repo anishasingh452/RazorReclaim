@@ -1,6 +1,7 @@
 import { getServiceClient } from "@/lib/db/service-client";
 import { evaluatePolicy } from "@/lib/policy/engine";
 import { appendAudit } from "../audit";
+import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import type { CaseGraphState, CaseGraphUpdate } from "../state";
 
 export async function policyNode(state: CaseGraphState): Promise<CaseGraphUpdate> {
@@ -40,7 +41,7 @@ export async function policyNode(state: CaseGraphState): Promise<CaseGraphUpdate
   );
   if (error) throw new Error(`policyNode: failed to persist policy checks: ${error.message}`);
 
-  await appendAudit(state.caseId, "policy_evaluated", "policy_engine", {
+  await appendAudit(state.caseId, AUDIT_EVENT.POLICY_CHECKED, "policy_engine", {
     candidate_action: state.selectedImpact.action_type,
     final_action: decision.action,
     allowed: decision.allowed,

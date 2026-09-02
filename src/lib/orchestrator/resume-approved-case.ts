@@ -1,7 +1,9 @@
 import { getServiceClient } from "@/lib/db/service-client";
 import { appendAudit } from "@/lib/langgraph/audit";
+import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import { executeNode } from "@/lib/langgraph/nodes/execute";
 import { verifyNode } from "@/lib/langgraph/nodes/verify";
+import { recordDecisionMemory } from "@/lib/memory/decision-memory";
 import type { CaseGraphState } from "@/lib/langgraph/state";
 import type { ActionType } from "@/types/domain";
 
@@ -13,7 +15,7 @@ interface RequestedAction {
  * Resumes a case after a human approves its escalation. Not a LangGraph
  * checkpoint resume (see escalate.ts for why) — this directly re-invokes
  * the same execute/verify node functions the graph itself uses, so the
- * approved path goes through identical real Razorpay/Resend logic.
+ * approved path goes through identical real Razorpay/Resend/voice logic.
  *
  * Two distinct outcomes depending on what was actually being approved:
  *  - The Business Impact Engine's own top pick was already `escalate`
@@ -50,7 +52,7 @@ export async function resumeApprovedCase(approvalId: string, reviewer: string): 
   const requested = approval.requested_action as unknown as RequestedAction;
   const originalAction = requested.selected_impact.action_type;
 
-  await appendAudit(approval.case_id, "human_approved", "human", { reviewer, original_action: originalAction });
+  await appendAudit(approval.case_id, AUDIT_EVENT.APPROVED, "human", { reviewer, original_action: originalAction });
 
   if (originalAction === "escalate") {
     // No further automated action possible — a human now owns this case.
@@ -65,6 +67,15 @@ export async function resumeApprovedCase(approvalId: string, reviewer: string): 
       request_payload: { note: "Approved for human-led outreach — no automated execution" },
       response_payload: null,
     });
+    await recordDecisionMemory({
+      customerId: caseRecord.customer_id,
+      caseId: approval.case_id,
+      riskType: caseRecord.risk_type,
+      finalAction: "escalate",
+      verified: false,
+      amountRecovered: 0,
+      amount: caseRecord.amount,
+    });
     return;
   }
 
@@ -78,6 +89,8 @@ export async function resumeApprovedCase(approvalId: string, reviewer: string): 
     rootCauseModel: null,
     recommendation: null,
     recommendationModel: null,
+    agentProposals: [],
+    sharedContext: null,
     impactCandidates: [],
     selectedImpact: {
       action_type: requested.selected_impact.action_type,
@@ -86,6 +99,8 @@ export async function resumeApprovedCase(approvalId: string, reviewer: string): 
       intervention_cost: 0,
       expected_recovery_value: 0,
       selected: true,
+      feasible: true,
+      exclusion_reason: null,
     },
     policyDecision: null,
     finalAction: originalAction,
@@ -96,7 +111,7 @@ export async function resumeApprovedCase(approvalId: string, reviewer: string): 
   const executeUpdate = await executeNode(state);
   state = { ...state, ...executeUpdate };
 
-  if (originalAction === "retry" && state.executionResult?.status === "success") {
+  if ((originalAction === "retry" || originalAction === "voice") && state.executionResult?.status === "success") {
     const verifyUpdate = await verifyNode(state);
     state = { ...state, ...verifyUpdate };
   }
@@ -109,6 +124,8 @@ export async function rejectApprovedCase(approvalId: string, reviewer: string): 
   if (error || !approval) throw new Error(`rejectApprovedCase: approval not found: ${error?.message}`);
   if (approval.status !== "pending") throw new Error(`rejectApprovedCase: approval ${approvalId} is not pending`);
 
+  const { data: caseRecord } = await supabase.from("cases").select("*").eq("id", approval.case_id).single();
+
   await supabase
     .from("approvals")
     .update({ status: "rejected", reviewer, reviewed_at: new Date().toISOString() })
@@ -116,5 +133,17 @@ export async function rejectApprovedCase(approvalId: string, reviewer: string): 
 
   await supabase.from("cases").update({ status: "stopped" }).eq("id", approval.case_id);
 
-  await appendAudit(approval.case_id, "human_rejected", "human", { reviewer });
+  await appendAudit(approval.case_id, AUDIT_EVENT.REJECTED, "human", { reviewer });
+
+  if (caseRecord) {
+    await recordDecisionMemory({
+      customerId: caseRecord.customer_id,
+      caseId: approval.case_id,
+      riskType: caseRecord.risk_type,
+      finalAction: "stop",
+      verified: false,
+      amountRecovered: 0,
+      amount: caseRecord.amount,
+    });
+  }
 }

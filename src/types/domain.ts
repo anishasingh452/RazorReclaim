@@ -25,7 +25,9 @@ export type ActionType =
   | "reminder"
   | "wait_and_retry"
   | "escalate"
-  | "stop";
+  | "stop"
+  | "voice"
+  | "no_action";
 
 export interface Case {
   id: string;
@@ -43,8 +45,24 @@ export interface Case {
   is_synthetic: boolean;
   status: CaseStatus;
   final_action: ActionType | null;
+  signal_id: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type SignalStatus = "new" | "linked" | "ignored";
+
+/** A raw, pre-case detection event. A case is created FROM a signal, not the other way around. */
+export interface Signal {
+  id: string;
+  batch_id: string | null;
+  case_id: string | null;
+  source: "gateway" | "checkout_funnel" | "subscription_engine" | "receivable_ledger" | "razorpay_webhook" | "manual";
+  signal_type: string;
+  payload: Record<string, unknown>;
+  status: SignalStatus;
+  detected_at: string;
+  created_at: string;
 }
 
 /** Case row enriched with its selected Business Impact Engine candidate — what the Command Center table displays. */
@@ -109,6 +127,9 @@ export interface ImpactScore {
   intervention_cost: number;
   expected_recovery_value: number;
   selected: boolean;
+  /** false when the Candidate Action Engine ruled this action out before any scoring (e.g. retry doesn't apply to a receivable). */
+  feasible: boolean;
+  exclusion_reason: string | null;
   created_at: string;
 }
 
@@ -170,7 +191,15 @@ export interface Approval {
   created_at: string;
 }
 
-export type AuditActor = "ai_agent" | "policy_engine" | "impact_engine" | "human" | "system";
+export type AuditActor =
+  | "ai_agent"
+  | "policy_engine"
+  | "impact_engine"
+  | "candidate_engine"
+  | "human"
+  | "system"
+  | "conflict_engine"
+  | "reasoning_engine";
 
 export interface AuditEvent {
   id: string;
@@ -178,7 +207,136 @@ export interface AuditEvent {
   event_type: string;
   actor: AuditActor;
   detail: Record<string, unknown>;
+  model_version: string | null;
+  prev_hash: string | null;
+  hash: string | null;
   created_at: string;
+}
+
+export type ScheduledActionStatus = "pending" | "executed" | "cancelled";
+
+export interface ScheduledAction {
+  id: string;
+  case_id: string;
+  action_type: ActionType;
+  scheduled_for: string;
+  status: ScheduledActionStatus;
+  reason: string | null;
+  created_at: string;
+  executed_at: string | null;
+}
+
+export type VoiceCallStatus = "completed" | "no_answer" | "voicemail" | "declined";
+export type VoiceCallOutcome = "promise_to_pay" | "refused" | "callback_requested" | "no_response" | "resolved";
+
+export interface VoiceInteraction {
+  id: string;
+  case_id: string;
+  execution_id: string | null;
+  provider: "simulated" | "real";
+  call_status: VoiceCallStatus;
+  duration_seconds: number;
+  outcome: VoiceCallOutcome;
+  transcript_summary: string | null;
+  created_at: string;
+}
+
+export type PromiseToPayStatus = "pending" | "kept" | "broken";
+
+export interface PromiseToPay {
+  id: string;
+  case_id: string;
+  voice_interaction_id: string | null;
+  promised_amount: number;
+  promised_date: string;
+  status: PromiseToPayStatus;
+  created_at: string;
+  resolved_at: string | null;
+}
+
+/** A durable, cross-case summary keyed by customer — decision memory for future reasoning. */
+export interface DecisionMemory {
+  id: string;
+  customer_id: string;
+  case_id: string;
+  summary: string;
+  final_action: ActionType | null;
+  verified: boolean;
+  amount_recovered: number;
+  created_at: string;
+}
+
+// ============================================================
+// Agent Command Center — governance layer above individual recovery
+// actions: multiple agents may propose actions on the same case; this
+// layer decides which one (if any) actually happens.
+// ============================================================
+
+/** The 5-way meta-decision the Command Center makes for every case. */
+export type DecisionCategory = "ACT" | "WAIT" | "ESCALATE" | "NO_ACTION" | "STOP";
+
+export type AgentProposalStatus = "proposed" | "selected" | "rejected_conflict" | "rejected_governor";
+
+export interface AgentProposal {
+  id: string;
+  case_id: string;
+  agent_name: string;
+  proposed_action: ActionType;
+  proposed_channel: string | null;
+  confidence: number | null;
+  rationale: string;
+  status: AgentProposalStatus;
+  created_at: string;
+}
+
+export type ConflictType = "duplicate_action" | "conflicting_action" | "competing_channel" | "contradictory_strategy";
+export type ConflictResolution = "selected_winner" | "blocked_all" | "deferred";
+
+export interface AgentConflict {
+  id: string;
+  case_id: string;
+  conflict_type: ConflictType;
+  proposal_ids: string[];
+  resolution: ConflictResolution | null;
+  winning_proposal_id: string | null;
+  detail: Record<string, unknown>;
+  created_at: string;
+}
+
+export type NoActionReasonCode =
+  | "likely_natural_recovery"
+  | "already_contacted"
+  | "active_promise_exists"
+  | "communication_fatigue_risk"
+  | "cost_exceeds_value"
+  | "insufficient_confidence"
+  | "other";
+
+export interface NoActionDecision {
+  id: string;
+  case_id: string;
+  reason_code: NoActionReasonCode;
+  explanation: string;
+  alternatives_considered: Record<string, unknown>[];
+  created_at: string;
+}
+
+/** ALLOW: proceed. DELAY: wait, don't block outright. BLOCK: do not contact through this channel now. */
+export type GovernorDecision = "ALLOW" | "DELAY" | "BLOCK";
+
+export interface CommunicationGovernorResult {
+  decision: GovernorDecision;
+  reason: string;
+}
+
+/** Aggregated cross-agent context pulled before any agent proposes or communicates. */
+export interface SharedCaseContext {
+  customerId: string;
+  priorDecisions: DecisionMemory[];
+  activePromise: PromiseToPay | null;
+  pendingScheduledActions: ScheduledAction[];
+  priorExecutionCount: number;
+  hoursSinceLastExecution: number | null;
 }
 
 export type BatchStatus = "pending" | "running" | "completed" | "failed";

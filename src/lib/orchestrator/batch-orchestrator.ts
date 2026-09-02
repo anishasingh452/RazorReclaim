@@ -1,6 +1,7 @@
 import pLimit from "p-limit";
 import { getServiceClient } from "@/lib/db/service-client";
 import { runCaseGraph } from "@/lib/langgraph/run-case";
+import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import type { CaseGraphUpdate } from "@/lib/langgraph/state";
 import type { BatchStreamEvent } from "@/types/domain";
 
@@ -116,7 +117,7 @@ export async function runBatch(options: RunBatchOptions): Promise<BatchRunSummar
             await supabase.from("cases").update({ status: "failed" }).eq("id", c.id);
             await supabase.from("audit_log").insert({
               case_id: c.id,
-              event_type: "case_processing_failed",
+              event_type: AUDIT_EVENT.PROCESSING_FAILED,
               actor: "system",
               detail: { error: String(err) },
             });

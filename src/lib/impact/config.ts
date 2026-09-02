@@ -14,13 +14,17 @@ export const QUALITATIVE_PROBABILITY: Record<
 
 /** How effective each action type is at converting the base recovery probability. */
 export const ACTION_EFFECTIVENESS: Record<
-  "retry" | "payment_link" | "reminder" | "wait_and_retry",
+  "retry" | "payment_link" | "reminder" | "wait_and_retry" | "voice",
   number
 > = {
   retry: 1.0,
   payment_link: 0.9,
   reminder: 0.5,
   wait_and_retry: 0.6,
+  // An AI voice call can address objections in real time (unlike a static
+  // email/link), so it converts better than payment_link — but it's still
+  // automation, not a human negotiator, so it stays below retry's ceiling.
+  voice: 0.95,
 };
 
 /**
@@ -40,13 +44,16 @@ export const ESCALATE_RECOVERY_PROBABILITY = 0.5;
 
 /** Fixed nominal cost (INR) per automated intervention. */
 export const INTERVENTION_COST: Record<
-  "retry" | "payment_link" | "reminder" | "wait_and_retry",
+  "retry" | "payment_link" | "reminder" | "wait_and_retry" | "voice",
   number
 > = {
   retry: 0,
   payment_link: 15,
   reminder: 5,
   wait_and_retry: 0,
+  // An AI voice call costs meaningfully more per contact than an email/link
+  // send, but far less than routing to a human account manager.
+  voice: 60,
 };
 
 /**

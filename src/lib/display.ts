@@ -51,6 +51,8 @@ export const ACTION_LABEL: Record<ActionType, string> = {
   wait_and_retry: "Wait & Retry",
   escalate: "Escalate",
   stop: "Stop",
+  voice: "Voice Call",
+  no_action: "No Action",
 };
 
 export const STATUS_LABEL: Record<CaseStatus, string> = {
@@ -97,6 +99,8 @@ export const ACTION_COLOR: Record<ActionType, string> = {
   wait_and_retry: "bg-white/[0.06] text-zinc-400 border-white/10",
   escalate: "bg-violet-500/10 text-violet-300 border-violet-500/20",
   stop: "bg-red-500/10 text-red-300 border-red-500/20",
+  voice: "bg-teal-500/10 text-teal-300 border-teal-500/20",
+  no_action: "bg-white/[0.04] text-zinc-500 border-white/10",
 };
 
 export const RISK_TYPE_COLOR: Record<RiskType, string> = {

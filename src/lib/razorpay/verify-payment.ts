@@ -1,5 +1,7 @@
 import { getServiceClient } from "@/lib/db/service-client";
 import { appendAudit } from "@/lib/langgraph/audit";
+import { AUDIT_EVENT } from "@/lib/audit/event-types";
+import { recordDecisionMemory } from "@/lib/memory/decision-memory";
 import type { Verification, VerificationSource } from "@/types/domain";
 
 /**
@@ -39,7 +41,11 @@ export async function verifyPaymentLinkPaid(
     .maybeSingle();
   if (existing) return existing as Verification;
 
-  const { data: caseRow } = await supabase.from("cases").select("amount").eq("id", execution.case_id).single();
+  const { data: caseRow } = await supabase
+    .from("cases")
+    .select("amount, customer_id, risk_type, final_action")
+    .eq("id", execution.case_id)
+    .single();
   const amountRecovered = amountPaidPaise != null ? amountPaidPaise / 100 : (caseRow?.amount ?? 0);
 
   const { data: verification, error: verifyError } = await supabase
@@ -59,12 +65,24 @@ export async function verifyPaymentLinkPaid(
 
   await supabase.from("cases").update({ status: "recovered" }).eq("id", execution.case_id);
 
-  await appendAudit(execution.case_id, "outcome_verified", "system", {
+  await appendAudit(execution.case_id, AUDIT_EVENT.OUTCOME_VERIFIED, "system", {
     verified: true,
     amount_recovered: amountRecovered,
     source,
     payment_link_id: paymentLinkId,
   });
+
+  if (caseRow) {
+    await recordDecisionMemory({
+      customerId: caseRow.customer_id,
+      caseId: execution.case_id,
+      riskType: caseRow.risk_type,
+      finalAction: caseRow.final_action,
+      verified: true,
+      amountRecovered,
+      amount: caseRow.amount,
+    });
+  }
 
   return verification as Verification;
 }

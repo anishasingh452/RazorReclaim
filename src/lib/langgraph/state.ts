@@ -1,12 +1,14 @@
 import { Annotation } from "@langchain/langgraph";
 import type {
   ActionType,
+  AgentProposal,
   Case,
   Evidence,
   Execution,
   PolicyDecision,
   RecommendationResult,
   RootCauseResult,
+  SharedCaseContext,
   Verification,
 } from "@/types/domain";
 import type { ImpactCandidate } from "@/lib/impact/engine";
@@ -31,6 +33,11 @@ export const CaseGraphAnnotation = Annotation.Root({
 
   recommendation: Annotation<RecommendationResult | null>(),
   recommendationModel: Annotation<string | null>(),
+
+  // Agent Command Center — multiple agents' proposals + the cross-case
+  // shared context consulted to reconcile/govern them.
+  agentProposals: Annotation<AgentProposal[]>(),
+  sharedContext: Annotation<SharedCaseContext | null>(),
 
   impactCandidates: Annotation<ImpactCandidate[]>(),
   selectedImpact: Annotation<ImpactCandidate | null>(),

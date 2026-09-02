@@ -1,4 +1,5 @@
-import type { ImpactScore, RiskType, RootCauseResult } from "@/types/domain";
+import type { ActionType, ImpactScore, RiskType, RootCauseResult } from "@/types/domain";
+import { enumerateCandidates } from "@/lib/candidates/candidate-engine";
 import {
   ACTION_EFFECTIVENESS,
   ESCALATE_RECOVERY_PROBABILITY,
@@ -15,28 +16,19 @@ export interface ImpactEngineInput {
   contactAttempts: number;
   daysSinceFailure: number;
   rootCause: Pick<RootCauseResult, "qualitative_recovery_probability">;
+  /**
+   * Total prior executions recorded for this case — determines whether the
+   * zero-cost floor candidate is `no_action` (never engaged) or `stop`
+   * (already attempted at least once). Defaults to 0 for backward
+   * compatibility with callers that predate this field.
+   */
+  priorExecutionCount?: number;
 }
 
 export type ImpactCandidate = Omit<ImpactScore, "id" | "case_id" | "created_at">;
 
-type AutomatedAction = "retry" | "payment_link" | "reminder" | "wait_and_retry";
-
-/**
- * Which actions are even feasible to consider for a given risk type.
- * `escalate` and `stop` are always feasible fallbacks.
- */
-function feasibleAutomatedActions(riskType: RiskType): AutomatedAction[] {
-  switch (riskType) {
-    case "failed_payment":
-      return ["retry", "payment_link", "reminder", "wait_and_retry"];
-    case "subscription_failure":
-      return ["retry", "reminder", "wait_and_retry"];
-    case "checkout_abandonment":
-      return ["payment_link", "reminder"];
-    case "overdue_receivable":
-      return ["payment_link", "reminder"];
-  }
-}
+type AutomatedAction = "retry" | "payment_link" | "reminder" | "wait_and_retry" | "voice";
+const AUTOMATED_ACTION_TYPES: AutomatedAction[] = ["retry", "payment_link", "reminder", "wait_and_retry", "voice"];
 
 /**
  * Deterministic Expected Recovery Value calculation — no LLM involvement.
@@ -46,29 +38,42 @@ function feasibleAutomatedActions(riskType: RiskType): AutomatedAction[] {
  * only AI-influenced input, and it is clamped into a fixed numeric table
  * before any arithmetic touches it — the model never emits the number that
  * drives money math directly.
+ *
+ * Every action the Candidate Action Engine enumerates is represented in the
+ * output — feasible ones get a real ERV, infeasible ones get a zeroed-out
+ * row carrying their exclusion reason, so the full "what was considered and
+ * why" picture is always in the returned/persisted candidate set, not just
+ * the winner.
  */
 export function computeImpactScores(input: ImpactEngineInput): ImpactCandidate[] {
-  const { amount, riskType, contactAttempts, daysSinceFailure, rootCause } = input;
+  const { amount, riskType, contactAttempts, daysSinceFailure, rootCause, priorExecutionCount = 0 } = input;
 
   const baseProbability = QUALITATIVE_PROBABILITY[rootCause.qualitative_recovery_probability];
   const decay = attemptDecay(contactAttempts) * timeDecay(daysSinceFailure);
 
   const candidates: ImpactCandidate[] = [];
 
-  for (const action of feasibleAutomatedActions(riskType)) {
+  for (const def of enumerateCandidates(riskType)) {
+    if (!AUTOMATED_ACTION_TYPES.includes(def.action_type as AutomatedAction)) continue;
+
+    if (!def.feasible) {
+      candidates.push(infeasibleCandidate(def.action_type, def.exclusion_reason!));
+      continue;
+    }
+
+    const action = def.action_type as AutomatedAction;
     const recovery_probability = clamp01(baseProbability * ACTION_EFFECTIVENESS[action] * decay);
     const intervention_cost = INTERVENTION_COST[action];
-    const potential_recoverable_amount = amount;
-    const expected_recovery_value = round2(
-      potential_recoverable_amount * recovery_probability - intervention_cost
-    );
+    const expected_recovery_value = round2(amount * recovery_probability - intervention_cost);
     candidates.push({
       action_type: action,
-      potential_recoverable_amount,
+      potential_recoverable_amount: amount,
       recovery_probability: round3(recovery_probability),
       intervention_cost,
       expected_recovery_value,
       selected: false,
+      feasible: true,
+      exclusion_reason: null,
     });
   }
 
@@ -81,25 +86,54 @@ export function computeImpactScores(input: ImpactEngineInput): ImpactCandidate[]
     intervention_cost: escCost,
     expected_recovery_value: round2(amount * ESCALATE_RECOVERY_PROBABILITY - escCost),
     selected: false,
+    feasible: true,
+    exclusion_reason: null,
   });
 
-  // stop: by definition, zero cost and zero recoverable amount attempted —
-  // the deterministic floor every other action is measured against.
+  // Zero-cost floor: `no_action` for a case that has never been engaged at
+  // all, `stop` for one with prior contact/execution history. Mutually
+  // exclusive by construction, so there's never an ERV tie between them —
+  // exactly one is a real (feasible) candidate, the other is recorded as
+  // excluded for this case's history.
+  const isFresh = contactAttempts === 0 && priorExecutionCount === 0;
   candidates.push({
-    action_type: "stop",
+    action_type: isFresh ? "no_action" : "stop",
     potential_recoverable_amount: 0,
     recovery_probability: 0,
     intervention_cost: 0,
     expected_recovery_value: 0,
     selected: false,
+    feasible: true,
+    exclusion_reason: null,
   });
-
-  const winner = candidates.reduce((best, c) =>
-    c.expected_recovery_value > best.expected_recovery_value ? c : best
+  candidates.push(
+    infeasibleCandidate(
+      isFresh ? "stop" : "no_action",
+      isFresh
+        ? "Case has no prior contact or execution history — stop implies abandoning a prior attempt that never happened."
+        : "Case already has prior contact/execution history — no_action (never engaged) no longer applies."
+    )
   );
+
+  const winner = candidates
+    .filter((c) => c.feasible)
+    .reduce((best, c) => (c.expected_recovery_value > best.expected_recovery_value ? c : best));
   winner.selected = true;
 
   return candidates;
+}
+
+function infeasibleCandidate(action_type: ActionType, exclusion_reason: string): ImpactCandidate {
+  return {
+    action_type,
+    potential_recoverable_amount: 0,
+    recovery_probability: 0,
+    intervention_cost: 0,
+    expected_recovery_value: 0,
+    selected: false,
+    feasible: false,
+    exclusion_reason,
+  };
 }
 
 export function selectedAction(candidates: ImpactCandidate[]): ImpactCandidate {
