@@ -1,4 +1,4 @@
-import type { Batch, BatchStreamEvent, Case } from "@/types/domain";
+import type { Batch, BatchStreamEvent, CaseWithImpact } from "@/types/domain";
 
 export async function fetchBatches(): Promise<Batch[]> {
   const res = await fetch("/api/batches");
@@ -40,7 +40,7 @@ export async function fetchCases(params: {
   riskType?: string;
   limit?: number;
   offset?: number;
-}): Promise<{ cases: Case[]; total: number }> {
+}): Promise<{ cases: CaseWithImpact[]; total: number }> {
   const qs = new URLSearchParams();
   if (params.batchId) qs.set("batchId", params.batchId);
   if (params.status) qs.set("status", params.status);

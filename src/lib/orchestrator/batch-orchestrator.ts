@@ -1,7 +1,43 @@
 import pLimit from "p-limit";
 import { getServiceClient } from "@/lib/db/service-client";
 import { runCaseGraph } from "@/lib/langgraph/run-case";
+import type { CaseGraphUpdate } from "@/lib/langgraph/state";
 import type { BatchStreamEvent } from "@/types/domain";
+
+/** Pulls the fields worth narrating out of each node's state update, for the live activity feed. */
+function narrativeDetail(nodeName: string, update: CaseGraphUpdate): Record<string, unknown> {
+  switch (nodeName) {
+    case "root_cause":
+      return {
+        category: update.rootCause?.category,
+        recoveryProbability: update.rootCause?.qualitative_recovery_probability,
+        confidence: update.rootCause?.confidence,
+      };
+    case "recommend":
+      return { suggestedAction: update.recommendation?.suggested_action };
+    case "business_impact":
+      return {
+        selectedAction: update.selectedImpact?.action_type,
+        erv: update.selectedImpact?.expected_recovery_value,
+      };
+    case "policy":
+      return {
+        finalAction: update.finalAction,
+        allowed: update.policyDecision?.allowed,
+        requiresHuman: update.policyDecision?.requiresHuman,
+      };
+    case "execute":
+      return {
+        actionType: update.executionResult?.action_type,
+        provider: update.executionResult?.provider,
+        status: update.executionResult?.status,
+      };
+    case "verify":
+      return { verified: update.verification?.verified, amountRecovered: update.verification?.amount_recovered };
+    default:
+      return {};
+  }
+}
 
 export interface RunBatchOptions {
   batchId: string;
@@ -40,7 +76,7 @@ export async function runBatch(options: RunBatchOptions): Promise<BatchRunSummar
 
   const { data: openCases, error: casesError } = await supabase
     .from("cases")
-    .select("id, seq")
+    .select("id, seq, customer_name, amount, risk_type")
     .eq("batch_id", options.batchId)
     .eq("status", "open")
     .order("seq");
@@ -60,10 +96,20 @@ export async function runBatch(options: RunBatchOptions): Promise<BatchRunSummar
     await Promise.allSettled(
       openCases.map((c) =>
         limit(async () => {
-          emit(options, { caseId: c.id, stage: "queued", status: "started" });
+          emit(options, {
+            caseId: c.id,
+            stage: "queued",
+            status: "started",
+            detail: { customerName: c.customer_name, amount: c.amount, riskType: c.risk_type },
+          });
           try {
-            await runCaseGraph(c.id, (nodeName) => {
-              emit(options, { caseId: c.id, stage: nodeName, status: "completed" });
+            await runCaseGraph(c.id, (nodeName, update) => {
+              emit(options, {
+                caseId: c.id,
+                stage: nodeName,
+                status: "completed",
+                detail: { customerName: c.customer_name, amount: c.amount, ...narrativeDetail(nodeName, update) },
+              });
             });
           } catch (err) {
             casesFailed += 1;

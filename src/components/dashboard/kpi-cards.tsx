@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatInr } from "@/lib/display";
+import { TrendingUp, ShieldCheck, Target, Gauge, ListChecks, Bot } from "lucide-react";
+import { formatInrCompact } from "@/lib/display";
 import type { BatchDetail } from "@/lib/api-client";
 
 export function KpiCards({ detail }: { detail: BatchDetail | null }) {
@@ -13,26 +13,28 @@ export function KpiCards({ detail }: { detail: BatchDetail | null }) {
   const decisionsExecuted = Object.entries(detail?.actionBreakdown ?? {}).reduce((s, [, n]) => s + n, 0);
 
   const cards = [
-    { label: "Total Revenue At Risk", value: formatInr(atRisk) },
-    { label: "Revenue Recovered", value: formatInr(recovered), accent: "text-emerald-600" },
-    { label: "Recovery Rate", value: `${recoveryRate.toFixed(1)}%` },
-    { label: "Expected Recovery Value", value: formatInr(erv), sub: "sum of ERV-selected actions" },
-    { label: "Cases Processed", value: `${processed} / ${totalCases}` },
-    { label: "AI Decisions Executed", value: String(decisionsExecuted) },
+    { label: "Revenue At Risk", value: formatInrCompact(atRisk), icon: Target, accent: "text-zinc-200" },
+    { label: "Revenue Recovered", value: formatInrCompact(recovered), icon: TrendingUp, accent: "text-emerald-400" },
+    { label: "Recovery Rate", value: `${recoveryRate.toFixed(1)}%`, icon: Gauge, accent: "text-emerald-400" },
+    { label: "Expected Recovery Value", value: formatInrCompact(erv), icon: ShieldCheck, accent: "text-blue-300", sub: "ERV-selected actions" },
+    { label: "Cases Processed", value: `${processed}/${totalCases}`, icon: ListChecks, accent: "text-zinc-200" },
+    { label: "AI Decisions Executed", value: String(decisionsExecuted), icon: Bot, accent: "text-violet-300" },
   ];
 
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
       {cards.map((c) => (
-        <Card key={c.label} className="gap-1 py-4">
-          <CardHeader className="px-4">
-            <CardTitle className="text-xs font-medium text-neutral-500">{c.label}</CardTitle>
-          </CardHeader>
-          <CardContent className="px-4">
-            <div className={`text-xl font-semibold tabular-nums ${c.accent ?? ""}`}>{c.value}</div>
-            {c.sub && <div className="text-[11px] text-neutral-400 mt-0.5">{c.sub}</div>}
-          </CardContent>
-        </Card>
+        <div
+          key={c.label}
+          className="group relative rounded-xl border border-white/10 bg-white/[0.03] p-4 overflow-hidden transition-colors hover:border-white/20"
+        >
+          <div className="flex items-center justify-between mb-3">
+            <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{c.label}</span>
+            <c.icon className="size-3.5 text-muted-foreground/50" />
+          </div>
+          <div className={`text-2xl font-semibold tabular-nums font-mono ${c.accent}`}>{c.value}</div>
+          {c.sub && <div className="text-[10px] text-muted-foreground/70 mt-1">{c.sub}</div>}
+        </div>
       ))}
     </div>
   );

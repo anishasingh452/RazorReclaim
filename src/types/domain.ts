@@ -47,6 +47,12 @@ export interface Case {
   updated_at: string;
 }
 
+/** Case row enriched with its selected Business Impact Engine candidate — what the Command Center table displays. */
+export interface CaseWithImpact extends Case {
+  selectedRecoveryProbability: number | null;
+  selectedExpectedRecoveryValue: number | null;
+}
+
 export interface Evidence {
   id: string;
   case_id: string;

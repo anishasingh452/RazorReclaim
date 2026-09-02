@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Play } from "lucide-react";
+import { Play, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import {
   type BatchDetail,
@@ -12,21 +12,33 @@ import {
   fetchCases,
   runBatchStream,
 } from "@/lib/api-client";
-import type { Batch, BatchStreamEvent, Case } from "@/types/domain";
+import type { Batch, BatchStreamEvent, CaseStatus, CaseWithImpact } from "@/types/domain";
+import { STATUS_LABEL } from "@/lib/display";
 import { KpiCards } from "./kpi-cards";
 import { CommandCenterTable } from "./command-center-table";
 import { LiveRunPanel } from "./live-run-panel";
 import { NewBatchDialog } from "./new-batch-dialog";
 
+const FILTERS: { key: CaseStatus | "all"; label: string }[] = [
+  { key: "all", label: "All" },
+  { key: "awaiting_approval", label: STATUS_LABEL.awaiting_approval },
+  { key: "recovered", label: STATUS_LABEL.recovered },
+  { key: "in_progress", label: STATUS_LABEL.in_progress },
+  { key: "escalated", label: STATUS_LABEL.escalated },
+  { key: "stopped", label: STATUS_LABEL.stopped },
+  { key: "open", label: STATUS_LABEL.open },
+];
+
 export function DashboardClient() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [batchId, setBatchId] = useState<string | null>(null);
   const [detail, setDetail] = useState<BatchDetail | null>(null);
-  const [cases, setCases] = useState<Case[]>([]);
+  const [cases, setCases] = useState<CaseWithImpact[]>([]);
   const [loadingCases, setLoadingCases] = useState(false);
   const [running, setRunning] = useState(false);
   const [events, setEvents] = useState<BatchStreamEvent[]>([]);
   const [stageCounts, setStageCounts] = useState<Record<string, number>>({});
+  const [filter, setFilter] = useState<CaseStatus | "all">("all");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const loadBatches = useCallback(async () => {
@@ -83,14 +95,13 @@ export function DashboardClient() {
     setRunning(true);
     setEvents([]);
     setStageCounts({});
+    setFilter("all");
 
-    // Periodically refresh the table/KPIs while the stream runs, so the
-    // dashboard visibly updates as cases complete, not just at the end.
-    pollRef.current = setInterval(() => loadBatchAndCases(batchId), 2500);
+    pollRef.current = setInterval(() => loadBatchAndCases(batchId), 2000);
 
     try {
       await runBatchStream(batchId, (event) => {
-        setEvents((prev) => [...prev.slice(-200), event]);
+        setEvents((prev) => [...prev.slice(-300), event]);
         if (event.stage) {
           setStageCounts((prev) => ({ ...prev, [event.stage!]: (prev[event.stage!] ?? 0) + 1 }));
         }
@@ -106,23 +117,34 @@ export function DashboardClient() {
   }
 
   const openCount = detail?.statusBreakdown.open ?? 0;
+  const filteredCases = useMemo(
+    () => (filter === "all" ? cases : cases.filter((c) => c.status === filter)),
+    [cases, filter]
+  );
 
   return (
-    <div className="mx-auto max-w-7xl px-6 py-8 space-y-6">
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight">Executive Dashboard</h1>
-          <p className="text-sm text-neutral-500">AI Decision & Execution Layer for Revenue Recovery</p>
+    <div className="mx-auto max-w-[1400px] px-6 py-8 space-y-6">
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-emerald-400">
+            <Sparkles className="size-3" />
+            AI Recovery Command Center
+          </div>
+          <h1 className="text-2xl font-semibold tracking-tight">Decision Intelligence Inbox</h1>
+          <p className="text-sm text-muted-foreground">
+            Every case below is ranked, diagnosed, and priced by real-time AI + deterministic engines — not a
+            static dashboard.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <select
-            className="h-8 rounded-lg border border-neutral-200 bg-white px-2.5 text-sm"
+            className="h-9 rounded-lg border border-white/10 bg-white/[0.03] px-2.5 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-emerald-500/40"
             value={batchId ?? ""}
             onChange={(e) => setBatchId(e.target.value)}
           >
             {batches.length === 0 && <option value="">No batches yet</option>}
             {batches.map((b) => (
-              <option key={b.id} value={b.id}>
+              <option key={b.id} value={b.id} className="bg-zinc-900">
                 {b.name} ({b.total_cases} cases · {b.status})
               </option>
             ))}
@@ -131,7 +153,12 @@ export function DashboardClient() {
           <Button size="sm" variant="secondary" onClick={handleQuickCreate}>
             Quick 150-case batch
           </Button>
-          <Button size="sm" onClick={handleRun} disabled={!batchId || running || openCount === 0}>
+          <Button
+            size="sm"
+            onClick={handleRun}
+            disabled={!batchId || running || openCount === 0}
+            className="bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+          >
             <Play className="size-3.5" />
             {running ? "Running…" : `Run AI Recovery${openCount ? ` (${openCount} open)` : ""}`}
           </Button>
@@ -142,16 +169,26 @@ export function DashboardClient() {
 
       <LiveRunPanel running={running} events={events} stageCounts={stageCounts} />
 
-      <div className="rounded-lg border bg-white">
-        <div className="px-4 py-3 border-b flex items-center justify-between">
+      <div className="rounded-xl border border-white/10 bg-white/[0.02]">
+        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between flex-wrap gap-3">
           <h2 className="text-sm font-medium">Recovery Command Center</h2>
-          {detail && (
-            <span className="text-xs text-neutral-400">
-              {detail.totalCases} cases in this batch
-            </span>
-          )}
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {FILTERS.map((f) => (
+              <button
+                key={f.key}
+                onClick={() => setFilter(f.key)}
+                className={`px-2.5 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+                  filter === f.key
+                    ? "bg-emerald-500/15 border-emerald-500/30 text-emerald-300"
+                    : "border-white/10 text-muted-foreground hover:text-foreground hover:border-white/20"
+                }`}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
         </div>
-        <CommandCenterTable cases={cases} loading={loadingCases} />
+        <CommandCenterTable cases={filteredCases} loading={loadingCases} />
       </div>
     </div>
   );

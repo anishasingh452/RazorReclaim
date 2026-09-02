@@ -29,10 +29,14 @@ export function ApprovalActions({ approvalId }: { approvalId: string }) {
 
   return (
     <div className="flex gap-2">
-      <Button size="sm" onClick={() => act("approve")} disabled={busy !== null}>
+      <Button
+        onClick={() => act("approve")}
+        disabled={busy !== null}
+        className="bg-emerald-500 text-emerald-950 hover:bg-emerald-400"
+      >
         {busy === "approve" ? "Approving…" : "Approve"}
       </Button>
-      <Button size="sm" variant="outline" onClick={() => act("reject")} disabled={busy !== null}>
+      <Button variant="outline" onClick={() => act("reject")} disabled={busy !== null} className="border-white/15">
         {busy === "reject" ? "Rejecting…" : "Reject"}
       </Button>
     </div>
