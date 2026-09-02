@@ -238,6 +238,8 @@ export interface VoiceInteraction {
   duration_seconds: number;
   outcome: VoiceCallOutcome;
   transcript_summary: string | null;
+  /** Populated only when a real ElevenLabs TTS clip backs this interaction — null means pure simulation. */
+  audio_url: string | null;
   created_at: string;
 }
 

@@ -2,21 +2,27 @@ import { getServiceClient } from "@/lib/db/service-client";
 import { createPaymentLinkForCase } from "@/lib/razorpay/create-payment-link";
 import { sendRecoveryEmail } from "@/lib/resend/send-recovery-email";
 import { simulateVoiceCall } from "@/lib/voice/simulate-call";
+import { buildCollectionsScript } from "@/lib/voice/collections-script";
+import { elevenLabsConfigured, synthesizeSpeech, uploadCallAudio } from "@/lib/voice/elevenlabs";
 import { recordDecisionMemory } from "@/lib/memory/decision-memory";
 import { appendAudit } from "../audit";
 import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import type { CaseGraphState, CaseGraphUpdate } from "../state";
-import type { CaseStatus, ExecutionProvider, ExecutionStatus } from "@/types/domain";
+import type { Case, CaseStatus, ExecutionProvider, ExecutionStatus } from "@/types/domain";
 
 /**
  * Real dispatch for the unified Recovery Action set:
  *  - payment_link / reminder: real Razorpay Test Mode Payment Link + real
  *    Resend email. Verification for these is asynchronous (webhook or the
  *    demo simulate-payment trigger) — this node does NOT guess an outcome.
- *  - retry / voice: simulated. There's no real payment method to retry
- *    against, and no real telephony provider wired up, in a synthetic
- *    dataset — both stay clearly-labeled placeholders whose outcome is
- *    determined synchronously by verifyNode.
+ *  - retry: simulated. There's no real payment method to retry against in a
+ *    synthetic dataset, so this stays a clearly-labeled placeholder.
+ *  - voice: the CALL OUTCOME is simulated (no telephony provider wired up),
+ *    but when ELEVENLABS_API_KEY is configured, the actual audio the agent
+ *    would speak is REALLY synthesized via ElevenLabs (Hinglish script,
+ *    multilingual model) and uploaded to Supabase Storage — a genuine
+ *    artifact, not a fabricated one. Falls back to pure simulation
+ *    (audio_url stays null) if the key is absent or synthesis fails.
  *  - stop / no_action: no external call — recorded as a real execution row
  *    (provider "none") so the executions ledger is the single source of
  *    truth for every decision made, including deliberate non-engagement.
@@ -79,7 +85,7 @@ export async function executeNode(state: CaseGraphState): Promise<CaseGraphUpdat
   if (error || !execution) throw new Error(`executeNode: failed to persist execution: ${error?.message}`);
 
   if (state.finalAction === "voice") {
-    await recordVoiceInteraction(state.caseId, execution.id, c.amount, state.selectedImpact?.recovery_probability ?? 0.3);
+    await recordVoiceInteraction(c, execution.id, state.selectedImpact?.recovery_probability ?? 0.3);
   }
 
   if (status === "failed") {
@@ -109,24 +115,44 @@ export async function executeNode(state: CaseGraphState): Promise<CaseGraphUpdat
 }
 
 async function recordVoiceInteraction(
-  caseId: string,
+  c: Case,
   executionId: string,
-  amount: number,
   recoveryProbability: number
 ): Promise<void> {
   const supabase = getServiceClient();
-  const call = simulateVoiceCall({ caseId, amount, recoveryProbability });
+  const call = simulateVoiceCall({ caseId: c.id, amount: c.amount, recoveryProbability });
+
+  let audioUrl: string | null = null;
+  if (elevenLabsConfigured()) {
+    try {
+      const script = buildCollectionsScript({
+        customerName: c.customer_name,
+        amount: c.amount,
+        riskType: c.risk_type,
+        contactAttempts: c.contact_attempts,
+      });
+      const audio = await synthesizeSpeech(script);
+      audioUrl = await uploadCallAudio(c.id, audio);
+    } catch (err) {
+      // Real audio is a bonus artifact, not load-bearing — a synthesis/
+      // upload failure falls back to pure simulation rather than failing
+      // the whole case.
+      audioUrl = null;
+      console.error(`recordVoiceInteraction: ElevenLabs synthesis failed for case ${c.id}:`, err);
+    }
+  }
 
   const { data: voiceInteraction, error } = await supabase
     .from("voice_interactions")
     .insert({
-      case_id: caseId,
+      case_id: c.id,
       execution_id: executionId,
       provider: "simulated",
       call_status: call.call_status,
       duration_seconds: call.duration_seconds,
       outcome: call.outcome,
       transcript_summary: call.transcript_summary,
+      audio_url: audioUrl,
     })
     .select()
     .single();
@@ -137,7 +163,7 @@ async function recordVoiceInteraction(
       .toISOString()
       .slice(0, 10);
     const { error: ptpError } = await supabase.from("promises_to_pay").insert({
-      case_id: caseId,
+      case_id: c.id,
       voice_interaction_id: voiceInteraction.id,
       promised_amount: call.promiseToPay.promisedAmount,
       promised_date: promisedDate,
