@@ -82,13 +82,15 @@ export interface RootCauseResult {
     | "unknown";
   qualitative_recovery_probability: "very_low" | "low" | "medium" | "high" | "very_high";
   confidence: number; // 0..1
-  reasoning: string;
+  /** 1-4 short, concrete, evidence-grounded bullet points — not free-form chain-of-thought. */
+  evidence_summary: string[];
 }
 
 /** Structured output contract for the recommend_node LLM call. */
 export interface RecommendationResult {
   suggested_action: ActionType;
-  reasoning: string;
+  /** 1-4 short, concrete, evidence-grounded bullet points — not free-form chain-of-thought. */
+  evidence_summary: string[];
   confidence: number; // 0..1
 }
 
