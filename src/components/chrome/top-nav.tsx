@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { GitBranch, LayoutGrid, ListChecks, TrendingUp } from "lucide-react";
 
 const LINKS = [
-  { href: "/", label: "Command Center", icon: LayoutGrid },
+  { href: "/command-center", label: "Command Center", icon: LayoutGrid },
   { href: "/portfolio", label: "Portfolio", icon: TrendingUp },
   { href: "/approvals", label: "Approvals", icon: ListChecks },
   { href: "/conflicts", label: "Conflicts", icon: GitBranch },
@@ -17,10 +17,11 @@ export function TopNav() {
   return (
     <nav className="flex items-center gap-0.5">
       {LINKS.map((link) => {
-        // "/" must match exactly, or every route would light it up; case
-        // detail pages (/cases/...) belong to the Command Center section.
+        // Case detail pages belong to the Command Center section.
         const active =
-          link.href === "/" ? pathname === "/" || pathname.startsWith("/cases") : pathname.startsWith(link.href);
+          link.href === "/command-center"
+            ? pathname.startsWith("/command-center") || pathname.startsWith("/cases")
+            : pathname.startsWith(link.href);
 
         return (
           <Link

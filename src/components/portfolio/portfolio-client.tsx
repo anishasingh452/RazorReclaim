@@ -120,7 +120,7 @@ export function PortfolioClient() {
                 : "Nothing prioritized yet. Run this batch from the Command Center first."}
             </p>
             <Link
-              href="/"
+              href="/command-center"
               className="inline-flex items-center gap-1 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-1.5 text-xs text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground"
             >
               Go to Command Center <ArrowUpRight className="size-3" />

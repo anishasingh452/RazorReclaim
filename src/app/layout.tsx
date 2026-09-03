@@ -3,7 +3,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/sonner";
-import { AppShell } from "@/components/chrome/app-shell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -16,8 +15,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "RazorReclaim — AI Revenue Recovery",
-  description: "Agentic decision & execution layer for revenue recovery",
+  title: "RazorReclaim — Agentic Revenue Recovery",
+  description:
+    "An agentic decision and execution layer for revenue recovery: diagnoses every failed payment, prices every option, and shows its reasoning for each decision.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -28,7 +28,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <TooltipProvider delay={200}>
-          <AppShell>{children}</AppShell>
+          {children}
           <Toaster position="top-right" theme="dark" />
         </TooltipProvider>
       </body>

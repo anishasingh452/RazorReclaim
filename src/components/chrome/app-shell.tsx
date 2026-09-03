@@ -21,7 +21,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1500px] items-center gap-6 px-5 md:px-8">
-          <Link href="/" className="group flex items-center gap-2.5">
+          <Link href="/command-center" className="group flex items-center gap-2.5">
             <span className="relative flex size-6 items-center justify-center rounded-md border border-emerald-500/25 bg-emerald-500/10">
               <span className="live-dot" />
             </span>

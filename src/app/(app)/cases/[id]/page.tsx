@@ -88,7 +88,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
   return (
     <div className="mx-auto max-w-6xl space-y-5 px-5 py-8 md:px-8">
       <Link
-        href="/"
+        href="/command-center"
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-emerald-300"
       >
         <ArrowLeft className="size-3.5" /> Command Center

@@ -379,6 +379,151 @@
   .hairline {
     background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.12), transparent);
   }
+
+  /* ---------- Landing ---------- */
+
+  /* A floor grid receding to a horizon, drifting toward the viewer. Pure
+     CSS 3D so it costs nothing next to the particle canvas above it. */
+  .floor-grid {
+    background-image:
+      linear-gradient(oklch(0.77 0.15 165 / 0.28) 1px, transparent 1px),
+      linear-gradient(90deg, oklch(0.77 0.15 165 / 0.18) 1px, transparent 1px);
+    background-size: 90px 90px;
+    transform: perspective(340px) rotateX(72deg);
+    transform-origin: 50% 100%;
+    animation: floor-drift 7s linear infinite;
+    -webkit-mask-image: linear-gradient(to top, #000 0%, transparent 72%);
+    mask-image: linear-gradient(to top, #000 0%, transparent 72%);
+  }
+
+  /* Soft coloured light sources that wander behind the headline. */
+  .bloom {
+    position: absolute;
+    border-radius: 999px;
+    filter: blur(90px);
+    animation: bloom-drift 22s ease-in-out infinite alternate;
+  }
+
+  /* Headline treatment from the reference: bright type sitting in its own
+     halo, as if lit from within. */
+  .title-glow {
+    text-shadow:
+      0 0 28px oklch(1 0 0 / 0.28),
+      0 0 90px oklch(0.77 0.15 165 / 0.4),
+      0 0 150px oklch(0.7 0.15 250 / 0.28);
+  }
+
+  /* Scroll-triggered entrance. Starts hidden and slightly out of focus;
+     `.is-visible` (set by an IntersectionObserver) settles it. */
+  .reveal {
+    opacity: 0;
+    transform: translateY(26px);
+    filter: blur(6px);
+    transition:
+      opacity 800ms cubic-bezier(0.22, 1, 0.36, 1),
+      transform 800ms cubic-bezier(0.22, 1, 0.36, 1),
+      filter 800ms cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--d, 0ms);
+  }
+  .reveal.is-visible {
+    opacity: 1;
+    transform: none;
+    filter: none;
+  }
+
+  /* Hero copy arrives on load in sequence, no observer needed. */
+  .arrive {
+    animation: arrive 1100ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+    animation-delay: var(--d, 0ms);
+  }
+
+  .scroll-cue {
+    animation: scroll-cue 2.4s ease-in-out infinite;
+  }
+
+  /* A pulse of activity that sweeps the pipeline on a loop — each node and
+     connector is offset by its own delay to make the wave. */
+  .pulse-node {
+    animation: pulse-node 6s ease-in-out infinite;
+  }
+  .pulse-link {
+    animation: pulse-link 6s ease-in-out infinite;
+  }
+}
+
+@keyframes pulse-node {
+  0%,
+  38%,
+  100% {
+    opacity: 0.32;
+    transform: scale(1);
+    box-shadow: none;
+  }
+  6% {
+    opacity: 1;
+    transform: scale(1.5);
+    box-shadow: 0 0 20px 2px oklch(0.77 0.15 165 / 0.65);
+  }
+  20% {
+    opacity: 0.62;
+    transform: scale(1);
+  }
+}
+
+@keyframes pulse-link {
+  0%,
+  38%,
+  100% {
+    opacity: 0.14;
+  }
+  6% {
+    opacity: 0.85;
+  }
+  20% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes floor-drift {
+  to {
+    background-position:
+      0 90px,
+      0 0;
+  }
+}
+
+@keyframes bloom-drift {
+  from {
+    transform: translate3d(-4%, -3%, 0) scale(1);
+  }
+  to {
+    transform: translate3d(5%, 4%, 0) scale(1.16);
+  }
+}
+
+@keyframes arrive {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+    filter: blur(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes scroll-cue {
+  0%,
+  100% {
+    transform: translateY(0);
+    opacity: 0.35;
+  }
+  50% {
+    transform: translateY(7px);
+    opacity: 0.9;
+  }
 }
 
 @keyframes rise {
