@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { ArrowRight, Ban, ChevronDown, Fingerprint, ScanSearch, Scale, ShieldCheck } from "lucide-react";
+import { AgenticAura } from "@/components/landing/agentic-aura";
 import { HeroCanvas } from "@/components/landing/hero-canvas";
 import { LandingNav } from "@/components/landing/landing-nav";
 import { PipelineLoop } from "@/components/landing/pipeline-loop";
@@ -50,8 +51,9 @@ export default async function LandingPage() {
 
       {/* ─────────────  HERO  ───────────── */}
       <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-5 py-28 text-center">
-        {/* Ambient stack, back to front: colour blooms, particle field, a
-            receding floor grid, then a vignette to hold the centre. */}
+        {/* Ambient stack, back to front: colour blooms, the agentic aura,
+            a scrim that protects the headline from it, the particle field,
+            a receding floor grid, then a vignette to hold the centre. */}
         <div aria-hidden className="absolute inset-0">
           <div className="bloom size-[38rem] bg-emerald-500/25" style={{ top: "-12%", left: "8%" }} />
           <div
@@ -62,9 +64,15 @@ export default async function LandingPage() {
             className="bloom size-[26rem] bg-violet-600/15"
             style={{ bottom: "4%", left: "34%", animationDelay: "-14s" }}
           />
+
+          <AgenticAura />
+          {/* Darkens only the band the type occupies, so the aura keeps its
+              brightness at the edges where nothing has to stay readable. */}
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_46%_32%_at_50%_47%,rgba(0,0,0,0.66),transparent_72%)]" />
+
           <HeroCanvas />
           <div className="floor-grid absolute inset-x-[-25%] bottom-0 h-[42vh]" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_60%_50%_at_50%_45%,transparent_10%,rgba(0,0,0,0.72)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_70%_58%_at_50%_45%,transparent_30%,rgba(0,0,0,0.7)_100%)]" />
         </div>
 
         <div className="relative flex max-w-4xl flex-col items-center">

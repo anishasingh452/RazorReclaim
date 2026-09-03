@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ShieldCheck } from "lucide-react";
+import { ArrowLeft, ShieldCheck } from "lucide-react";
 import { TopNav } from "./top-nav";
 
 /**
@@ -21,12 +21,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex h-14 max-w-[1500px] items-center gap-6 px-5 md:px-8">
-          <Link href="/command-center" className="group flex items-center gap-2.5">
+          {/* The wordmark is the way back out of the product to the landing
+              page — the standard place people look for it, and the header is
+              on every product page, so that exit is always one click away.
+              The nav's own "Command Center" item covers going back into the
+              app, so neither destination is stranded. */}
+          <Link
+            href="/"
+            title="Back to the RazorReclaim landing page"
+            aria-label="Back to the RazorReclaim landing page"
+            className="group flex items-center gap-2.5"
+          >
             <span className="relative flex size-6 items-center justify-center rounded-md border border-emerald-500/25 bg-emerald-500/10">
               <span className="live-dot" />
             </span>
             <span className="text-sm font-semibold tracking-tight">
               Razor<span className="text-emerald-400">Reclaim</span>
+            </span>
+            {/* Names the destination on hover, so the wordmark doesn't have
+                to be guessed at. */}
+            <span className="hidden items-center gap-1 text-[10px] font-medium tracking-wider text-muted-foreground/0 uppercase transition-colors group-hover:text-muted-foreground/70 lg:inline-flex">
+              <ArrowLeft className="size-2.5" />
+              Home
             </span>
           </Link>
 

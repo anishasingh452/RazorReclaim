@@ -441,6 +441,52 @@
     animation: scroll-cue 2.4s ease-in-out infinite;
   }
 
+  /* ---------- Agentic aura ---------- */
+
+  /* An iridescent form that slowly changes shape — the light source the
+     hero sits inside. `screen` blending keeps the layers additive so where
+     they overlap they brighten rather than muddy. */
+  .aura-blob {
+    position: absolute;
+    mix-blend-mode: screen;
+    filter: blur(40px);
+    animation: aura-drift 44s ease-in-out infinite;
+  }
+
+  /* Film grain. Without it the gradients read as flat CSS; with it they
+     read as rendered light. */
+  .grain::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.2;
+    mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  /* Orbits are real 3D planes rather than drawn ellipses, so the node
+     riding each one foreshortens correctly as it travels behind the core. */
+  .orbit-plane {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    border: 1px solid oklch(1 0 0 / 0.09);
+    transform-style: preserve-3d;
+    animation: plane-spin var(--dur, 30s) linear infinite;
+  }
+
+  .orbit-node {
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    width: 7px;
+    height: 7px;
+    margin-top: -3.5px;
+    margin-left: -3.5px;
+    border-radius: 50%;
+  }
+
   /* A pulse of activity that sweeps the pipeline on a loop — each node and
      connector is offset by its own delay to make the wave. */
   .pulse-node {
@@ -511,6 +557,35 @@
     opacity: 1;
     transform: translateY(0);
     filter: blur(0);
+  }
+}
+
+/* Transform-only on purpose. Each blob's gradient already fades to
+   transparent well inside its box, so animating border-radius shaped
+   nothing visible while forcing a repaint of a large blurred surface every
+   frame; rotating the off-centre gradient is what actually makes the light
+   wander, and it composites. */
+@keyframes aura-drift {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  33% {
+    transform: rotate(120deg) scale(1.11);
+  }
+  66% {
+    transform: rotate(240deg) scale(0.95);
+  }
+  100% {
+    transform: rotate(360deg) scale(1);
+  }
+}
+
+@keyframes plane-spin {
+  from {
+    transform: rotateX(var(--tilt, 70deg)) rotateZ(0deg);
+  }
+  to {
+    transform: rotateX(var(--tilt, 70deg)) rotateZ(360deg);
   }
 }
 
