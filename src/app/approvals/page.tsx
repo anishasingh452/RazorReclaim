@@ -1,9 +1,17 @@
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft } from "lucide-react";
+import { ArrowUpRight, CircleCheck, GitBranch, TriangleAlert } from "lucide-react";
 import { getServiceClient } from "@/lib/db/service-client";
 import { ApprovalActions } from "@/components/case/approval-actions";
 import { DecisionComparison } from "@/components/case/decision-comparison";
-import { avatarTint, formatInrPrecise, initials, RISK_TYPE_COLOR, RISK_TYPE_LABEL } from "@/lib/display";
+import {
+  RISK_TYPE_COLOR,
+  RISK_TYPE_LABEL,
+  avatarTint,
+  formatInrCompact,
+  formatInrPrecise,
+  initials,
+  timeAgo,
+} from "@/lib/display";
 import type { ActionType, RiskType } from "@/types/domain";
 
 interface RequestedAction {
@@ -28,6 +36,7 @@ interface ApprovalRow {
 
 export default async function ApprovalsPage() {
   const supabase = getServiceClient();
+
   const { data } = await supabase
     .from("approvals")
     .select("id, case_id, requested_action, created_at, cases(id, customer_name, amount, risk_type, customer_tier)")
@@ -35,74 +44,101 @@ export default async function ApprovalsPage() {
     .order("created_at", { ascending: true });
 
   const approvals = (data ?? []) as unknown as ApprovalRow[];
-  const totalAtRisk = approvals.reduce((s, a) => s + (a.cases?.amount ?? 0), 0);
+  const totalAtRisk = approvals.reduce((sum, a) => sum + (a.cases?.amount ?? 0), 0);
+
+  // Flag escalations that ALSO carry an unresolved agent disagreement — a
+  // reviewer should know the two agents didn't agree either.
+  const caseIds = approvals.map((a) => a.case_id);
+  const { data: conflictRows } = caseIds.length
+    ? await supabase.from("agent_conflicts").select("case_id").in("case_id", caseIds).is("resolution", null)
+    : { data: [] };
+  const conflicted = new Set((conflictRows ?? []).map((c) => c.case_id));
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-8 space-y-6">
-      <Link href="/" className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-emerald-300 transition-colors">
-        <ArrowLeft className="size-3.5" /> Back to Command Center
-      </Link>
-
-      <div className="flex items-end justify-between flex-wrap gap-4">
-        <div>
-          <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-amber-400 mb-1">
-            <AlertTriangle className="size-3" />
-            Human-in-the-loop
+    <div className="mx-auto max-w-5xl space-y-5 px-5 py-8 md:px-8">
+      <div className="rise flex flex-wrap items-end justify-between gap-4">
+        <div className="space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-medium tracking-[0.18em] text-amber-400 uppercase">
+            <TriangleAlert className="size-3" />
+            Human in the loop
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight">Approval Queue</h1>
-          <p className="text-sm text-muted-foreground max-w-xl mt-1">
-            Cases the Policy Engine routed to a human — above the auto-approval limit, or where the AI&apos;s own
-            top pick already required human judgment.
+          <h1 className="text-luminous text-3xl font-semibold tracking-tight">Approval Queue</h1>
+          <p className="max-w-xl text-sm text-muted-foreground">
+            Cases the Policy Engine deliberately pulled out of automation — above the auto-approval limit, or where a
+            guardrail demanded a human read the situation first.
           </p>
         </div>
+
         {approvals.length > 0 && (
-          <div className="rounded-xl border border-amber-500/25 bg-amber-500/[0.06] px-4 py-3 text-right">
-            <div className="text-[11px] uppercase tracking-wide text-amber-300/80">Pending decisions</div>
-            <div className="text-xl font-semibold font-mono text-amber-300">
-              {approvals.length} · {formatInrPrecise(totalAtRisk)}
+          <div className="glass px-4 py-3 text-right">
+            <div className="micro-label text-amber-300/80">Awaiting decision</div>
+            <div className="stat-value mt-1 text-xl font-semibold text-amber-300">
+              {approvals.length} · {formatInrCompact(totalAtRisk)}
             </div>
           </div>
         )}
       </div>
 
       {approvals.length === 0 && (
-        <div className="rounded-xl border border-white/10 bg-white/[0.02] py-16 text-center text-sm text-muted-foreground">
-          No cases currently awaiting approval.
+        <div className="rise glass flex flex-col items-center gap-3 py-20 text-center">
+          <span className="flex size-11 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10 text-emerald-300">
+            <CircleCheck className="size-5" />
+          </span>
+          <p className="text-sm text-muted-foreground">
+            Queue clear — nothing is currently waiting on a human decision.
+          </p>
         </div>
       )}
 
       <div className="space-y-4">
-        {approvals.map((a) => {
-          const ra = a.requested_action ?? {};
+        {approvals.map((approval, i) => {
+          const ra = approval.requested_action ?? {};
           const failedRules = ra.policy_decision?.checks?.filter((c) => !c.passed).map((c) => c.rule_name) ?? [];
+
           return (
-            <div key={a.id} className="rounded-xl border border-white/10 bg-white/[0.02] p-5 space-y-4">
-              <div className="flex items-start justify-between flex-wrap gap-3">
-                <Link href={`/cases/${a.case_id}`} className="flex items-center gap-3 group">
+            <section
+              key={approval.id}
+              className="rise glass space-y-4 p-5"
+              style={{ "--d": `${i * 70}ms` } as React.CSSProperties}
+            >
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <Link href={`/cases/${approval.case_id}`} className="group flex items-center gap-3">
                   <span
-                    className={`flex size-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold ${avatarTint(a.cases?.customer_name ?? "?")}`}
+                    className={`flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-semibold ${avatarTint(approval.cases?.customer_name ?? "?")}`}
                   >
-                    {initials(a.cases?.customer_name ?? "?")}
+                    {initials(approval.cases?.customer_name ?? "?")}
                   </span>
                   <div>
-                    <div className="text-sm font-medium group-hover:text-emerald-300 transition-colors">
-                      {a.cases?.customer_name ?? "Unknown customer"}
+                    <div className="flex items-center gap-1.5 text-sm font-medium transition-colors group-hover:text-emerald-300">
+                      {approval.cases?.customer_name ?? "Unknown customer"}
+                      <ArrowUpRight className="size-3 opacity-0 transition-opacity group-hover:opacity-100" />
                     </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      {a.cases && (
-                        <span className={`inline-flex items-center rounded-md border px-1.5 py-0 text-[10px] font-medium ${RISK_TYPE_COLOR[a.cases.risk_type]}`}>
-                          {RISK_TYPE_LABEL[a.cases.risk_type]}
+                    <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                      {approval.cases && (
+                        <span
+                          className={`inline-flex items-center rounded border px-1.5 py-0 text-[10px] font-medium ${RISK_TYPE_COLOR[approval.cases.risk_type]}`}
+                        >
+                          {RISK_TYPE_LABEL[approval.cases.risk_type]}
                         </span>
                       )}
-                      <span className="text-[11px] text-muted-foreground uppercase">{a.cases?.customer_tier}</span>
+                      <span className="micro-label">{approval.cases?.customer_tier}</span>
+                      {conflicted.has(approval.case_id) && (
+                        <span className="inline-flex items-center gap-1 rounded border border-violet-500/25 bg-violet-500/10 px-1.5 py-0 text-[10px] font-medium text-violet-300">
+                          <GitBranch className="size-2.5" />
+                          Agents disagreed
+                        </span>
+                      )}
                     </div>
                   </div>
                 </Link>
+
                 <div className="text-right">
-                  <div className="text-lg font-semibold tabular-nums font-mono">
-                    {a.cases ? formatInrPrecise(a.cases.amount) : "—"}
+                  <div className="stat-value text-lg font-semibold">
+                    {approval.cases ? formatInrPrecise(approval.cases.amount) : "—"}
                   </div>
-                  <div className="text-[11px] text-muted-foreground font-mono">{new Date(a.created_at).toLocaleString()}</div>
+                  <div className="stat-value text-[10.5px] text-muted-foreground/60">
+                    waiting {timeAgo(approval.created_at)}
+                  </div>
                 </div>
               </div>
 
@@ -117,8 +153,8 @@ export default async function ApprovalsPage() {
                 failedRules={failedRules}
               />
 
-              <ApprovalActions approvalId={a.id} />
-            </div>
+              <ApprovalActions approvalId={approval.id} />
+            </section>
           );
         })}
       </div>

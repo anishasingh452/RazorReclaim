@@ -341,6 +341,68 @@ export interface SharedCaseContext {
   hoursSinceLastExecution: number | null;
 }
 
+// ============================================================
+// Read models — shapes the API layer composes for the UI. These are
+// projections over existing tables (joined/ranked/verified), never new
+// state of their own.
+// ============================================================
+
+/** One case's place in the batch-wide priority ranking, joined with the display fields the UI needs. */
+export interface RankedPortfolioOpportunity {
+  caseId: string;
+  customerName: string;
+  customerTier: CustomerTier;
+  riskType: RiskType;
+  status: CaseStatus;
+  finalAction: ActionType | null;
+  amount: number;
+  daysSinceFailure: number;
+  recoveryProbability: number;
+  selectedErv: number;
+  priorityScore: number;
+}
+
+export interface ConflictProposalSummary {
+  id: string;
+  agentName: string;
+  proposedAction: ActionType;
+  proposedChannel: string | null;
+  confidence: number | null;
+  rationale: string;
+  status: AgentProposalStatus;
+}
+
+/** A conflict with everything needed to render it standalone, outside its case page. */
+export interface ConflictFeedItem {
+  id: string;
+  caseId: string;
+  customerName: string;
+  amount: number;
+  riskType: RiskType;
+  conflictType: ConflictType;
+  resolution: ConflictResolution | null;
+  winningProposalId: string | null;
+  proposals: ConflictProposalSummary[];
+  message: string | null;
+  createdAt: string;
+}
+
+/** Result of re-verifying a case's hash-chained audit trail on read. */
+export interface AuditChainIntegrity {
+  intact: boolean;
+  /** Index of the first row whose hash doesn't reconcile, or null when the chain is whole. */
+  brokenAtIndex: number | null;
+  chainedRows: number;
+  unchainedRows: number;
+}
+
+/** A decision-memory entry joined with a thumbnail of the case it came from. */
+export interface CustomerHistoryEntry extends DecisionMemory {
+  case_risk_type: RiskType | null;
+  case_amount: number | null;
+  case_status: CaseStatus | null;
+}
+
 export type BatchStatus = "pending" | "running" | "completed" | "failed";
 
 export interface Batch {

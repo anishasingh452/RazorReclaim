@@ -35,8 +35,14 @@ const NODE_TO_STAGE: Record<string, PipelineStageKey> = {
   detect: "signals",
   root_cause: "diagnosis",
   recommend: "options",
+  // The governance nodes don't get their own externally-facing stage: agent
+  // proposals ARE the options being weighed, and the final decision is the
+  // policy gate's conclusion. Folding them in keeps the narrative at 8 steps.
+  agent_proposals: "options",
+  shared_context_conflict: "options",
   business_impact: "impact",
   policy: "policy",
+  final_decision: "policy",
   escalate: "approval",
   execute: "execution",
   verify: "outcome",

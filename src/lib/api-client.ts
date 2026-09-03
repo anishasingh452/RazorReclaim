@@ -1,4 +1,10 @@
-import type { Batch, BatchStreamEvent, CaseWithImpact } from "@/types/domain";
+import type {
+  Batch,
+  BatchStreamEvent,
+  CaseWithImpact,
+  ConflictFeedItem,
+  RankedPortfolioOpportunity,
+} from "@/types/domain";
 
 export async function fetchBatches(): Promise<Batch[]> {
   const res = await fetch("/api/batches");
@@ -50,6 +56,25 @@ export async function fetchCases(params: {
   const res = await fetch(`/api/cases?${qs.toString()}`);
   if (!res.ok) throw new Error("Failed to load cases");
   return res.json();
+}
+
+export async function fetchPortfolio(batchId: string): Promise<RankedPortfolioOpportunity[]> {
+  const res = await fetch(`/api/batches/${batchId}/portfolio`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Failed to load portfolio ranking");
+  const data = await res.json();
+  return data.opportunities;
+}
+
+export async function fetchConflicts(params: { batchId?: string; resolved?: boolean } = {}): Promise<
+  ConflictFeedItem[]
+> {
+  const qs = new URLSearchParams();
+  if (params.batchId) qs.set("batchId", params.batchId);
+  if (params.resolved !== undefined) qs.set("resolved", String(params.resolved));
+  const res = await fetch(`/api/conflicts?${qs.toString()}`);
+  if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error ?? "Failed to load conflicts");
+  const data = await res.json();
+  return data.conflicts;
 }
 
 /**

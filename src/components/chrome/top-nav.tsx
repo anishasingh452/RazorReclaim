@@ -1,0 +1,48 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { GitBranch, LayoutGrid, ListChecks, TrendingUp } from "lucide-react";
+
+const LINKS = [
+  { href: "/", label: "Command Center", icon: LayoutGrid },
+  { href: "/portfolio", label: "Portfolio", icon: TrendingUp },
+  { href: "/approvals", label: "Approvals", icon: ListChecks },
+  { href: "/conflicts", label: "Conflicts", icon: GitBranch },
+] as const;
+
+export function TopNav() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="flex items-center gap-0.5">
+      {LINKS.map((link) => {
+        // "/" must match exactly, or every route would light it up; case
+        // detail pages (/cases/...) belong to the Command Center section.
+        const active =
+          link.href === "/" ? pathname === "/" || pathname.startsWith("/cases") : pathname.startsWith(link.href);
+
+        return (
+          <Link
+            key={link.href}
+            href={link.href}
+            aria-current={active ? "page" : undefined}
+            className={`group relative flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium transition-colors ${
+              active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {active && (
+              <span className="absolute inset-0 rounded-lg border border-white/10 bg-white/[0.05] shadow-[0_0_20px_-8px_oklch(0.77_0.15_165/0.6)]" />
+            )}
+            <link.icon
+              className={`relative size-3.5 transition-colors ${
+                active ? "text-emerald-400" : "text-muted-foreground/60 group-hover:text-muted-foreground"
+              }`}
+            />
+            <span className="relative hidden sm:inline">{link.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

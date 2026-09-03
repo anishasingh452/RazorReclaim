@@ -16,6 +16,13 @@ function narrativeDetail(nodeName: string, update: CaseGraphUpdate): Record<stri
       };
     case "recommend":
       return { suggestedAction: update.recommendation?.suggested_action };
+    case "agent_proposals":
+      return { proposedActions: update.agentProposals?.map((p) => p.proposed_action) };
+    case "shared_context_conflict":
+      return {
+        priorDecisions: update.sharedContext?.priorDecisions.length,
+        hasActivePromise: !!update.sharedContext?.activePromise,
+      };
     case "business_impact":
       return {
         selectedAction: update.selectedImpact?.action_type,

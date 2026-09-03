@@ -1,77 +1,100 @@
 "use client";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Activity } from "lucide-react";
 import { PipelineStepper, type StageStatus } from "@/components/pipeline/pipeline-stepper";
 import { narrateEvent } from "@/lib/activity-narrative";
-import { nodeToPipelineStage, PIPELINE_STAGES } from "@/lib/pipeline";
+import { nodeToPipelineStage, PIPELINE_STAGES, type PipelineStageKey } from "@/lib/pipeline";
 import type { BatchStreamEvent } from "@/types/domain";
 
-export function LiveRunPanel({
-  running,
-  events,
-  stageCounts,
-}: {
+interface LiveRunPanelProps {
   running: boolean;
   events: BatchStreamEvent[];
   stageCounts: Record<string, number>;
-}) {
+  processed: number;
+  total: number;
+}
+
+/**
+ * The live batch run. Every line here is a genuine execution event streamed
+ * from the orchestrator as it happens — there is no replay mode and no
+ * pre-baked script, which is exactly why the panel only exists while a run
+ * is producing events.
+ */
+export function LiveRunPanel({ running, events, stageCounts, processed, total }: LiveRunPanelProps) {
   if (!running && events.length === 0) return null;
 
-  // Fold raw node-level counts into the 8-stage narrative buckets.
-  const pipelineCounts: Partial<Record<string, number>> = {};
+  // Fold raw graph-node counts into the 8-stage narrative buckets.
+  const pipelineCounts: Partial<Record<PipelineStageKey, number>> = {};
   for (const [node, count] of Object.entries(stageCounts)) {
     const stage = nodeToPipelineStage(node);
     if (!stage) continue;
     pipelineCounts[stage] = (pipelineCounts[stage] ?? 0) + count;
   }
-  const statuses: Partial<Record<string, StageStatus>> = {};
+
+  const statuses: Partial<Record<PipelineStageKey, StageStatus>> = {};
   for (const stage of PIPELINE_STAGES) {
-    statuses[stage.key] = (pipelineCounts[stage.key] ?? 0) > 0 ? "done" : running ? "pending" : "pending";
+    statuses[stage.key] = (pipelineCounts[stage.key] ?? 0) > 0 ? "done" : "pending";
   }
   if (running) {
-    // Mark the furthest-progressed stage with events as "active" for a live feel.
-    const lastEvent = events[events.length - 1];
-    const activeStage = lastEvent?.stage ? nodeToPipelineStage(lastEvent.stage) : null;
+    const lastStage = events[events.length - 1]?.stage;
+    const activeStage = lastStage ? nodeToPipelineStage(lastStage) : null;
     if (activeStage) statuses[activeStage] = "active";
   }
 
-  return (
-    <Card className="border-white/10 bg-white/[0.02]">
-      <CardHeader>
-        <CardTitle className="text-sm flex items-center gap-2 font-medium">
-          <span className="text-blue-300">AI Recovery Pipeline</span>
-          {running && (
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-mono uppercase tracking-wide text-emerald-400">
-              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              live
-            </span>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <PipelineStepper statuses={statuses as never} counts={pipelineCounts as never} />
+  const percent = total > 0 ? Math.min((processed / total) * 100, 100) : 0;
 
-        <ScrollArea className="h-48 rounded-lg border border-white/10 bg-black/20 p-3">
-          <div className="space-y-1.5 font-mono text-[11.5px]">
-            {events
-              .slice(-80)
-              .reverse()
-              .map((e, i) => {
-                const n = narrateEvent(e);
-                return (
-                  <div key={i} className="flex gap-2.5 leading-snug">
-                    <span className="text-zinc-600 shrink-0 tabular-nums">
-                      {new Date(e.timestamp).toLocaleTimeString()}
-                    </span>
-                    <span className={n.accent}>{n.text}</span>
-                  </div>
-                );
-              })}
-            {events.length === 0 && <span className="text-zinc-600">Waiting for the first signal…</span>}
-          </div>
-        </ScrollArea>
-      </CardContent>
-    </Card>
+  return (
+    <section className={`glass p-5 ${running ? "beam-ring" : ""}`}>
+      <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
+        <span className="flex size-7 items-center justify-center rounded-lg border border-blue-500/25 bg-blue-500/10 text-blue-300">
+          <Activity className="size-3.5" />
+        </span>
+        <span className="text-sm font-medium">Agent pipeline</span>
+        {running && (
+          <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium tracking-wider text-emerald-300 uppercase">
+            <span className="live-dot" />
+            Executing live
+          </span>
+        )}
+        <span className="stat-value ml-auto text-xs text-muted-foreground">
+          {processed}
+          <span className="text-muted-foreground/40"> / {total} cases</span>
+        </span>
+      </div>
+
+      <div className="mb-5 h-0.5 overflow-hidden rounded-full bg-white/[0.06]">
+        <div
+          className="h-full rounded-full bg-emerald-400 shadow-[0_0_12px_oklch(0.77_0.15_165)] transition-[width] duration-700 ease-out"
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+
+      <PipelineStepper statuses={statuses} counts={pipelineCounts} />
+
+      <div className="inset-panel relative mt-5 h-52 overflow-y-auto p-3">
+        {/* Fade the top edge so scrolled content dissolves rather than clips. */}
+        <div
+          aria-hidden
+          className="pointer-events-none sticky top-0 z-10 -mt-3 h-4 bg-gradient-to-b from-black/40 to-transparent"
+        />
+        <div className="space-y-1 font-mono text-[11.5px]">
+          {events
+            .slice(-90)
+            .reverse()
+            .map((event, i) => {
+              const line = narrateEvent(event);
+              return (
+                <div key={`${event.timestamp}-${i}`} className="fade-in flex gap-2.5 leading-snug">
+                  <span className="stat-value shrink-0 text-white/25">
+                    {new Date(event.timestamp).toLocaleTimeString("en-IN", { hour12: false })}
+                  </span>
+                  <span className={line.accent}>{line.text}</span>
+                </div>
+              );
+            })}
+          {events.length === 0 && <span className="text-white/25">Waiting for the first signal…</span>}
+        </div>
+      </div>
+    </section>
   );
 }

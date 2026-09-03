@@ -3,27 +3,30 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 
 export type StageStatus = "done" | "active" | "pending" | "skipped";
 
-const DOT_CLASS: Record<StageStatus, string> = {
-  done: "bg-emerald-400 ring-4 ring-emerald-400/15",
-  active: "bg-blue-400 ring-4 ring-blue-400/20 animate-pulse",
-  pending: "bg-white/15",
-  skipped: "bg-white/10",
+const NODE_CLASS: Record<StageStatus, string> = {
+  done: "bg-emerald-400 shadow-[0_0_16px_-2px_oklch(0.77_0.15_165)] ring-[3px] ring-emerald-400/15",
+  active: "bg-blue-400 shadow-[0_0_18px_-1px_oklch(0.7_0.15_250)] ring-[4px] ring-blue-400/25",
+  pending: "bg-white/15 ring-[3px] ring-white/[0.04]",
+  skipped: "bg-white/[0.08] ring-[3px] ring-white/[0.02]",
 };
 
 const LABEL_CLASS: Record<StageStatus, string> = {
-  done: "text-foreground",
+  done: "text-foreground/85",
   active: "text-blue-300",
-  pending: "text-muted-foreground",
-  skipped: "text-muted-foreground/50",
+  pending: "text-muted-foreground/70",
+  skipped: "text-muted-foreground/35 line-through decoration-white/20",
 };
 
-const LINE_CLASS: Record<StageStatus, string> = {
-  done: "bg-emerald-400/40",
-  active: "bg-gradient-to-r from-emerald-400/40 to-white/10",
-  pending: "bg-white/10",
-  skipped: "bg-white/10",
-};
-
+/**
+ * The 8-stage recovery pipeline as an illuminated rail: nodes light up as
+ * they complete, the segment currently being worked carries a travelling
+ * pulse, and stages the run skipped stay visible but struck through — the
+ * shape of the whole process is legible even mid-run.
+ *
+ * Shared by the live batch view (aggregate, event-driven) and the case page
+ * (single case, derived from stored data), so both speak the same visual
+ * language for "where are we."
+ */
 export function PipelineStepper({
   statuses,
   counts,
@@ -32,26 +35,54 @@ export function PipelineStepper({
   counts?: Partial<Record<PipelineStageKey, number>>;
 }) {
   return (
-    <div className="flex items-center w-full overflow-x-auto py-1">
+    <div className="flex w-full items-start overflow-x-auto pb-1">
       {PIPELINE_STAGES.map((stage, i) => {
         const status = statuses[stage.key] ?? "pending";
+        const next = statuses[PIPELINE_STAGES[i + 1]?.key] ?? "pending";
         const count = counts?.[stage.key];
+        const isLast = i === PIPELINE_STAGES.length - 1;
+
+        // The connector reflects the transition INTO the next stage: solid
+        // emerald once both ends are done, a travelling pulse while the next
+        // stage is being worked, otherwise inert.
+        const connectorDone = status === "done" && (next === "done" || next === "skipped");
+        const connectorActive = status === "done" && next === "active";
+
         return (
-          <div key={stage.key} className="flex items-center shrink-0 last:flex-1">
+          <div key={stage.key} className="flex min-w-0 flex-1 items-start last:flex-none">
             <Tooltip>
-              <TooltipTrigger className="flex flex-col items-center gap-1.5 px-1">
-                <span className={`size-2.5 rounded-full transition-colors ${DOT_CLASS[status]}`} />
-                <span className={`text-[11px] font-medium whitespace-nowrap ${LABEL_CLASS[status]}`}>
-                  {stage.label}
+              <TooltipTrigger className="flex w-[4.5rem] shrink-0 cursor-default flex-col items-center gap-2 sm:w-auto sm:min-w-[5rem]">
+                <span className="relative flex h-3 items-center">
+                  <span className={`size-2.5 rounded-full transition-all duration-500 ${NODE_CLASS[status]}`} />
+                  {status === "active" && (
+                    <span className="absolute inset-0 m-auto size-2.5 animate-ping rounded-full bg-blue-400/60" />
+                  )}
+                </span>
+                <span className="flex flex-col items-center gap-0.5">
+                  <span
+                    className={`text-center text-[10.5px] leading-tight font-medium tracking-tight transition-colors sm:whitespace-nowrap ${LABEL_CLASS[status]}`}
+                  >
+                    {stage.label}
+                  </span>
                   {typeof count === "number" && count > 0 && (
-                    <span className="ml-1 font-mono text-[10px] text-muted-foreground">{count}</span>
+                    <span className="stat-value text-[10px] text-emerald-400/70">{count}</span>
                   )}
                 </span>
               </TooltipTrigger>
               <TooltipContent>{stage.hint}</TooltipContent>
             </Tooltip>
-            {i < PIPELINE_STAGES.length - 1 && (
-              <span className={`h-px w-8 md:w-12 mx-1 -mt-4 shrink-0 ${LINE_CLASS[status]}`} />
+
+            {!isLast && (
+              <span
+                className={`mt-[5px] h-px min-w-4 flex-1 rounded-full transition-colors duration-500 ${
+                  connectorDone
+                    ? "bg-gradient-to-r from-emerald-400/50 to-emerald-400/25"
+                    : connectorActive
+                      ? "stream bg-blue-400/15"
+                      : "bg-white/[0.07]"
+                }`}
+                style={connectorActive ? ({ "--stream-color": "oklch(0.7 0.15 250)" } as React.CSSProperties) : undefined}
+              />
             )}
           </div>
         );

@@ -24,6 +24,27 @@ export function narrateEvent(event: BatchStreamEvent): NarrativeLine {
       };
     case "recommend":
       return { text: `AI recommends — ${name}: ${humanize(d.suggestedAction as string)}`, accent: "text-blue-300" };
+    case "agent_proposals": {
+      const actions = Array.isArray(d.proposedActions) ? (d.proposedActions as string[]) : [];
+      const unique = [...new Set(actions)];
+      return {
+        text:
+          unique.length > 1
+            ? `Agents disagree — ${name}: ${unique.map(humanize).join(" vs ")}`
+            : `Agents agree — ${name}: ${humanize(unique[0])}`,
+        accent: unique.length > 1 ? "text-amber-300" : "text-violet-300",
+      };
+    }
+    case "shared_context_conflict": {
+      const prior = Number(d.priorDecisions ?? 0);
+      const promise = d.hasActivePromise ? ", active promise on file" : "";
+      return {
+        text: `Shared memory checked — ${name}: ${prior === 0 ? "no prior history" : `${prior} prior decision${prior === 1 ? "" : "s"}`}${promise}`,
+        accent: "text-violet-300",
+      };
+    }
+    case "final_decision":
+      return { text: `Command Center finalized — ${name}`, accent: "text-emerald-300" };
     case "business_impact":
       return {
         text: `Business Impact Engine selected — ${name}: ${humanize(d.selectedAction as string)} (ERV ${formatInrCompact(Number(d.erv ?? 0))})`,
@@ -50,6 +71,17 @@ export function narrateEvent(event: BatchStreamEvent): NarrativeLine {
       return { text: `Deferred — ${name}: cooldown active`, accent: "text-zinc-400" };
     case "error":
       return { text: `Error — ${name}: ${String(d.error ?? "unknown error")}`, accent: "text-red-400" };
+    case "batch_complete": {
+      const recovered = typeof d.totalRecovered === "number" ? formatInrCompact(d.totalRecovered) : null;
+      const seconds = typeof d.durationMs === "number" ? (d.durationMs / 1000).toFixed(1) : null;
+      const failed = typeof d.casesFailed === "number" && d.casesFailed > 0 ? ` · ${d.casesFailed} failed` : "";
+      return {
+        text: `Batch complete — ${d.casesProcessed ?? 0} cases decided${
+          recovered ? ` · ${recovered} recovered` : ""
+        }${failed}${seconds ? ` · ${seconds}s` : ""}`,
+        accent: "text-emerald-300",
+      };
+    }
     default:
       return { text: `${name} → ${event.stage}`, accent: "text-zinc-400" };
   }
