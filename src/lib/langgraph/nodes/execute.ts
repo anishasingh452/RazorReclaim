@@ -2,7 +2,7 @@ import { getServiceClient } from "@/lib/db/service-client";
 import { createPaymentLinkForCase } from "@/lib/razorpay/create-payment-link";
 import { sendRecoveryEmail } from "@/lib/resend/send-recovery-email";
 import { simulateVoiceCall } from "@/lib/voice/simulate-call";
-import { buildCollectionsScript } from "@/lib/voice/collections-script";
+import { buildCollectionsScript, type ScriptLanguage } from "@/lib/voice/collections-script";
 import { elevenLabsConfigured, synthesizeSpeech, uploadCallAudio } from "@/lib/voice/elevenlabs";
 import { recordDecisionMemory } from "@/lib/memory/decision-memory";
 import { appendAudit } from "../audit";
@@ -19,9 +19,10 @@ import type { Case, CaseStatus, ExecutionProvider, ExecutionStatus } from "@/typ
  *    synthetic dataset, so this stays a clearly-labeled placeholder.
  *  - voice: the CALL OUTCOME is simulated (no telephony provider wired up),
  *    but when ELEVENLABS_API_KEY is configured, the actual audio the agent
- *    would speak is REALLY synthesized via ElevenLabs (Hinglish script,
- *    multilingual model) and uploaded to Supabase Storage — a genuine
- *    artifact, not a fabricated one. Falls back to pure simulation
+ *    would speak is REALLY synthesized via ElevenLabs (multilingual model)
+ *    and uploaded to Supabase Storage — a genuine artifact, not a
+ *    fabricated one. Script language is VOICE_LANGUAGE ("english" | "hindi"
+ *    | "hinglish", default "hinglish"). Falls back to pure simulation
  *    (audio_url stays null) if the key is absent or synthesis fails.
  *  - stop / no_action: no external call — recorded as a real execution row
  *    (provider "none") so the executions ledger is the single source of
@@ -114,6 +115,14 @@ export async function executeNode(state: CaseGraphState): Promise<CaseGraphUpdat
   return { executionResult: execution };
 }
 
+const VALID_LANGUAGES: readonly ScriptLanguage[] = ["english", "hindi", "hinglish"];
+
+/** Reads VOICE_LANGUAGE ("english" | "hindi" | "hinglish"), defaulting to hinglish. */
+function resolveVoiceLanguage(): ScriptLanguage {
+  const raw = process.env.VOICE_LANGUAGE?.toLowerCase();
+  return (VALID_LANGUAGES as readonly string[]).includes(raw ?? "") ? (raw as ScriptLanguage) : "hinglish";
+}
+
 async function recordVoiceInteraction(
   c: Case,
   executionId: string,
@@ -130,6 +139,7 @@ async function recordVoiceInteraction(
         amount: c.amount,
         riskType: c.risk_type,
         contactAttempts: c.contact_attempts,
+        language: resolveVoiceLanguage(),
       });
       const audio = await synthesizeSpeech(script);
       audioUrl = await uploadCallAudio(c.id, audio);
