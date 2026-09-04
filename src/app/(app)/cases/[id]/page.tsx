@@ -33,7 +33,13 @@ import { CustomerMemory } from "@/components/case/customer-memory";
 import { SimulatePaymentButton } from "@/components/case/simulate-payment-button";
 import { ErvBars } from "@/components/viz/erv-bars";
 import { RadialGauge } from "@/components/viz/radial-gauge";
-import type { ActionType, RecommendationResult, RootCauseResult } from "@/types/domain";
+import type {
+  ActionType,
+  ExecutionProvider,
+  RecommendationResult,
+  RootCauseResult,
+  VerificationSource,
+} from "@/types/domain";
 
 export default async function CasePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -336,11 +342,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
                   {formatInrPrecise(v.amount_recovered)}
                 </span>
                 <span className="rounded-md border border-white/10 bg-white/[0.02] px-2 py-0.5 text-[10.5px] text-muted-foreground">
-                  {v.source === "webhook"
-                    ? "Real Razorpay webhook"
-                    : v.source === "simulated_trigger"
-                      ? "Demo-triggered"
-                      : "Poll"}
+                  {verificationSourceLabel(v.source, executions.find((e) => e.id === v.execution_id)?.provider)}
                 </span>
                 <span className="stat-value ml-auto text-[10.5px] text-muted-foreground/50">
                   {new Date(v.verified_at).toLocaleString("en-IN")}
@@ -433,6 +435,20 @@ function ReasoningCard({
       {model && <div className="stat-value mt-auto pt-1 text-[10px] text-muted-foreground/40">{model}</div>}
     </section>
   );
+}
+
+/**
+ * `simulated_trigger` covers two genuinely different things: the pipeline's
+ * own deterministic outcome for a retry/voice action (nothing external to
+ * wait on), and a human pressing the demo button against a REAL Razorpay
+ * payment link. Labelling both "demo-triggered" blurs precisely the
+ * real-vs-simulated line this product is built to keep visible, so the
+ * linked execution's provider disambiguates them.
+ */
+function verificationSourceLabel(source: VerificationSource, provider: ExecutionProvider | undefined): string {
+  if (source === "webhook") return "Real Razorpay webhook";
+  if (source === "poll") return "Polled";
+  return provider === "razorpay" ? "Demo-triggered on a real link" : "Simulated outcome";
 }
 
 function Chip({ label, value }: { label: string; value: string }) {

@@ -50,8 +50,22 @@ export function CountUp({ value, format, duration = 900, className }: CountUpPro
     };
     frameRef.current = requestAnimationFrame(tick);
 
+    /**
+     * Animation frames are a courtesy, not a guarantee: browsers suspend rAF
+     * for backgrounded tabs and throttle it under load. Without this, a
+     * KPI whose sweep began but never got another frame would sit at ~0
+     * indefinitely — reporting "₹0 recovered" for a batch that recovered
+     * real money. A timer (which still fires when throttled) guarantees the
+     * true figure lands regardless of how the sweep went.
+     */
+    const settle = setTimeout(() => {
+      fromRef.current = to;
+      setDisplay(to);
+    }, duration + 250);
+
     return () => {
       if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      clearTimeout(settle);
       fromRef.current = to;
     };
   }, [value, duration]);

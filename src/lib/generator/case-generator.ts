@@ -85,7 +85,45 @@ function tierWeightsFor(riskType: RiskType) {
   return riskType === "overdue_receivable" ? TIER_WEIGHTS_RECEIVABLE : TIER_WEIGHTS_DEFAULT;
 }
 
-function generateOneCase(rng: Rng, seq: number, emailPool: string[]): GeneratedCase {
+interface CustomerIdentity {
+  customer_name: string;
+  customer_id: string;
+  customer_email: string;
+}
+
+/** Identities already used in this batch, kept per tier so a customer's tier stays coherent. */
+type CustomerPools = Record<CustomerTier, CustomerIdentity[]>;
+
+/**
+ * Share of cases that belong to a customer the batch has already seen.
+ * Without repeat customers, Shared Agent Memory — prior decisions, active
+ * promises, the "we've dealt with this person before" check every agent
+ * runs — has nothing to read, and a headline capability silently shows
+ * empty on every case.
+ */
+const CUSTOMER_REUSE_RATE = 0.35;
+
+function emptyCustomerPools(): CustomerPools {
+  return { retail: [], smb: [], b2b: [] };
+}
+
+function mintCustomer(rng: Rng, emailPool: string[]): CustomerIdentity {
+  return {
+    customer_name: `${choice(rng, FIRST_NAMES)} ${choice(rng, LAST_NAMES)}`,
+    customer_id: `CUST-${uniformInt(rng, 100000, 999999)}`,
+    customer_email: choice(rng, emailPool),
+  };
+}
+
+function pickCustomer(rng: Rng, pools: CustomerPools, tier: CustomerTier, emailPool: string[]): CustomerIdentity {
+  const pool = pools[tier];
+  if (pool.length > 0 && rng() < CUSTOMER_REUSE_RATE) return choice(rng, pool);
+  const identity = mintCustomer(rng, emailPool);
+  pool.push(identity);
+  return identity;
+}
+
+function generateOneCase(rng: Rng, seq: number, emailPool: string[], pools: CustomerPools): GeneratedCase {
   const risk_type = weightedChoice(rng, RISK_TYPE_WEIGHTS);
   const customer_tier = weightedChoice(rng, tierWeightsFor(risk_type));
   const [min, max] = AMOUNT_RANGE_BY_TIER[customer_tier];
@@ -95,11 +133,7 @@ function generateOneCase(rng: Rng, seq: number, emailPool: string[]): GeneratedC
   const days_since_failure =
     risk_type === "overdue_receivable" ? uniformInt(rng, 5, 90) : uniformInt(rng, 0, 30);
 
-  const first = choice(rng, FIRST_NAMES);
-  const last = choice(rng, LAST_NAMES);
-  const customer_name = `${first} ${last}`;
-  const customer_id = `CUST-${uniformInt(rng, 100000, 999999)}`;
-  const customer_email = choice(rng, emailPool);
+  const { customer_name, customer_id, customer_email } = pickCustomer(rng, pools, customer_tier, emailPool);
 
   const tenureBias = tenureBiasForTier(customer_tier);
   const evidence = generateEvidenceForCase(rng, risk_type, contact_attempts, days_since_failure, tenureBias);
@@ -127,22 +161,23 @@ export function generateBatch(config: GenerateBatchConfig): GeneratedBatch {
   const rng = createRng(config.seed);
   const emailPool = buildDemoEmailPool(config.demoEmailBase, config.demoEmailPoolSize);
 
+  const pools = emptyCustomerPools();
   const cases: GeneratedCase[] = [];
   for (let i = 0; i < config.caseCount; i++) {
-    cases.push(generateOneCase(rng, i, emailPool));
+    cases.push(generateOneCase(rng, i, emailPool, pools));
   }
 
   // Guarantee at least one of each notable scenario type exists so the demo
   // always has a STOP candidate (3+ attempts) and an escalation candidate
   // (large B2B receivable) even on unlucky seeds/small batches.
-  ensureScenarioCoverage(rng, cases, emailPool);
+  ensureScenarioCoverage(rng, cases, emailPool, pools);
 
   const totalAtRisk = round2(cases.reduce((s, c) => s + c.amount, 0));
 
   return { seed: config.seed, caseCount: config.caseCount, cases, totalAtRisk };
 }
 
-function ensureScenarioCoverage(rng: Rng, cases: GeneratedCase[], emailPool: string[]) {
+function ensureScenarioCoverage(rng: Rng, cases: GeneratedCase[], emailPool: string[], pools: CustomerPools) {
   const hasStopCandidate = cases.some((c) => c.contact_attempts >= 3);
   const hasEscalationCandidate = cases.some((c) => c.customer_tier === "b2b" && c.amount >= 80000);
 
@@ -151,8 +186,11 @@ function ensureScenarioCoverage(rng: Rng, cases: GeneratedCase[], emailPool: str
     const contact_attempts = 4;
     const risk_type: RiskType = "failed_payment";
     const days_since_failure = uniformInt(rng, 0, 30);
+    // Forcing the tier means the previous identity no longer belongs here —
+    // take one from the pool for the tier this case is being moved into.
     cases[idx] = {
       ...cases[idx],
+      ...pickCustomer(rng, pools, "retail", emailPool),
       contact_attempts,
       risk_type,
       amount: round2(logNormalRange(rng, 500, 5000)),
@@ -167,10 +205,10 @@ function ensureScenarioCoverage(rng: Rng, cases: GeneratedCase[], emailPool: str
     const days_since_failure = uniformInt(rng, 30, 90);
     cases[idx] = {
       ...cases[idx],
+      ...pickCustomer(rng, pools, "b2b", emailPool),
       customer_tier: "b2b",
       risk_type,
       amount: round2(logNormalRange(rng, 80000, 200000)),
-      customer_email: choice(rng, emailPool),
       days_since_failure,
       evidence: generateEvidenceForCase(rng, risk_type, cases[idx].contact_attempts, days_since_failure, tenureBiasForTier("b2b")),
     };

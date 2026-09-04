@@ -182,4 +182,28 @@ describe("computeImpactScores", () => {
     }).find((c) => c.action_type === "payment_link")!;
     expect(contacted.recovery_probability).toBeLessThan(fresh.recovery_probability);
   });
+
+  it("publishes rows whose own numbers reconcile — ERV recomputes exactly from the stored probability and cost", () => {
+    // The impact ledger shows probability, cost and ERV side by side and
+    // invites the reader to check the arithmetic. Pricing off an unrounded
+    // probability while storing a rounded one would make every published
+    // row fail that check by a few paise.
+    for (const riskType of ["failed_payment", "checkout_abandonment", "subscription_failure", "overdue_receivable"] as const) {
+      for (const attempts of [0, 2]) {
+        const candidates = computeImpactScores({
+          amount: 3579.9,
+          riskType,
+          contactAttempts: attempts,
+          daysSinceFailure: 11,
+          rootCause: { qualitative_recovery_probability: "medium" },
+        });
+
+        for (const c of candidates.filter((c) => c.feasible)) {
+          const recomputed =
+            Math.round((c.potential_recoverable_amount * c.recovery_probability - c.intervention_cost) * 100) / 100;
+          expect(recomputed, `${riskType}/${attempts} attempts: ${c.action_type}`).toBe(c.expected_recovery_value);
+        }
+      }
+    }
+  });
 });

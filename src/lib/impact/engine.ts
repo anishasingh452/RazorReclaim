@@ -62,13 +62,18 @@ export function computeImpactScores(input: ImpactEngineInput): ImpactCandidate[]
     }
 
     const action = def.action_type as AutomatedAction;
-    const recovery_probability = clamp01(baseProbability * ACTION_EFFECTIVENESS[action] * decay);
+    // Round the probability BEFORE pricing with it. The stored row is what
+    // the impact ledger shows and what an auditor recomputes by hand; if ERV
+    // came from the unrounded value, the published numbers wouldn't
+    // reconcile with each other — a bad look for a decision the product
+    // asks people to trust precisely because it's checkable arithmetic.
+    const recovery_probability = round3(clamp01(baseProbability * ACTION_EFFECTIVENESS[action] * decay));
     const intervention_cost = INTERVENTION_COST[action];
     const expected_recovery_value = round2(amount * recovery_probability - intervention_cost);
     candidates.push({
       action_type: action,
       potential_recoverable_amount: amount,
-      recovery_probability: round3(recovery_probability),
+      recovery_probability,
       intervention_cost,
       expected_recovery_value,
       selected: false,
@@ -79,12 +84,13 @@ export function computeImpactScores(input: ImpactEngineInput): ImpactCandidate[]
 
   // escalate: fixed operational baseline probability, cost scales with case value
   const escCost = round2(escalateCost(amount));
+  const escProbability = round3(ESCALATE_RECOVERY_PROBABILITY);
   candidates.push({
     action_type: "escalate",
     potential_recoverable_amount: amount,
-    recovery_probability: round3(ESCALATE_RECOVERY_PROBABILITY),
+    recovery_probability: escProbability,
     intervention_cost: escCost,
-    expected_recovery_value: round2(amount * ESCALATE_RECOVERY_PROBABILITY - escCost),
+    expected_recovery_value: round2(amount * escProbability - escCost),
     selected: false,
     feasible: true,
     exclusion_reason: null,
