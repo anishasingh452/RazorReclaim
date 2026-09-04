@@ -1,6 +1,7 @@
 import pLimit from "p-limit";
 import { getServiceClient } from "@/lib/db/service-client";
 import { runCaseGraph } from "@/lib/langgraph/run-case";
+import { recoverStuckCases } from "./recover-stuck-cases";
 import { AUDIT_EVENT } from "@/lib/audit/event-types";
 import type { CaseGraphUpdate } from "@/lib/langgraph/state";
 import type { BatchStreamEvent } from "@/types/domain";
@@ -52,6 +53,8 @@ export interface RunBatchOptions {
   /** Overrides the batch's own `concurrency` column when provided. */
   concurrency?: number;
   onEvent?: (event: BatchStreamEvent) => void;
+  /** Overrides "now" for the interrupted-case staleness check — production callers never pass this; see recoverStuckCases. */
+  now?: number;
 }
 
 export interface BatchRunSummary {
@@ -70,6 +73,12 @@ export interface BatchRunSummary {
  * cases are left untouched. This is a genuinely live execution: every call
  * here re-runs the real LLM + policy + impact pipeline, nothing is replayed
  * from a prior run.
+ *
+ * Before picking up `open` cases, this also sweeps the batch for cases left
+ * `in_progress` by an earlier interrupted run (a killed server, a crashed
+ * process) and repairs or safely restarts them — see recoverStuckCases.
+ * Cases it resets to `open` are then picked up by this same call's query
+ * below, so pressing "Run" again is the entire recovery UX.
  */
 export async function runBatch(options: RunBatchOptions): Promise<BatchRunSummary> {
   const supabase = getServiceClient();
@@ -81,6 +90,27 @@ export async function runBatch(options: RunBatchOptions): Promise<BatchRunSummar
   if (batchError || !batch) throw new Error(`runBatch: batch not found: ${batchError?.message}`);
 
   const concurrency = options.concurrency ?? batch.concurrency ?? 6;
+
+  const recovery = await recoverStuckCases(
+    options.batchId,
+    (recoveredCase) => {
+      emit(options, {
+        caseId: recoveredCase.caseId,
+        stage: "recover",
+        status: "completed",
+        detail: { recoveryAction: recoveredCase.action },
+      });
+    },
+    options.now
+  );
+  if (recovery.recovered > 0) {
+    emit(options, {
+      caseId: undefined,
+      stage: "recover",
+      status: "completed",
+      detail: { recovered: recovery.recovered, skipped: recovery.skipped },
+    });
+  }
 
   const { data: openCases, error: casesError } = await supabase
     .from("cases")

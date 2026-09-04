@@ -9,6 +9,11 @@
  *   -> POLICY_CHECKED -> [WHY_NOT_TO_ACT if applicable] -> FINAL_DECISION
  *   -> [ESCALATED_TO_HUMAN -> APPROVED|REJECTED] | ACTION_EXECUTED
  *   -> OUTCOME_VERIFIED
+ *
+ * CASE_RECOVERED is the exception to that linear shape: it can appear
+ * anywhere a case was left in_progress by an interrupted run (a killed
+ * server, a crashed process) and a later batch run found and repaired it.
+ * See src/lib/orchestrator/recover-stuck-cases.ts.
  */
 export const AUDIT_EVENT = {
   SIGNAL_DETECTED: "SIGNAL_DETECTED",
@@ -31,6 +36,7 @@ export const AUDIT_EVENT = {
   OUTCOME_VERIFIED: "OUTCOME_VERIFIED",
   DEFERRED: "DEFERRED",
   PROCESSING_FAILED: "PROCESSING_FAILED",
+  CASE_RECOVERED: "CASE_RECOVERED",
 } as const;
 
 export type AuditEventType = (typeof AUDIT_EVENT)[keyof typeof AUDIT_EVENT];
