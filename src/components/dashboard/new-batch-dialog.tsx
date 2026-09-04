@@ -14,12 +14,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { createBatch } from "@/lib/api-client";
+import { DEFAULT_DEMO_CASE_COUNT } from "@/lib/generator/demo-config";
 import { toast } from "sonner";
 
 export function NewBatchDialog({ onCreated }: { onCreated: (batchId: string) => void }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("Revenue Recovery Batch");
-  const [caseCount, setCaseCount] = useState(150);
+  const [caseCount, setCaseCount] = useState(DEFAULT_DEMO_CASE_COUNT);
   const [creating, setCreating] = useState(false);
 
   async function handleCreate() {
@@ -71,7 +72,9 @@ export function NewBatchDialog({ onCreated }: { onCreated: (batchId: string) => 
               value={caseCount}
               onChange={(e) => setCaseCount(Number(e.target.value))}
             />
-            <p className="text-[11px] text-muted-foreground">50–200 keeps a live demo run under a minute.</p>
+            <p className="text-[11px] text-muted-foreground">
+              25–30 shows the full decision mix and still finishes while you&apos;re watching.
+            </p>
           </div>
         </div>
 

@@ -1,5 +1,6 @@
 import { createRng, choice, uniformInt, weightedChoice, logNormalRange, round2, type Rng } from "./rng";
 import { generateEvidenceForCase, tenureBiasForTier, type GeneratedEvidence } from "./evidence";
+import { AUTO_APPROVAL_LIMIT } from "@/lib/policy/config";
 import type { CustomerTier, RiskType } from "@/types/domain";
 
 export interface GeneratedCase {
@@ -180,6 +181,18 @@ export function generateBatch(config: GenerateBatchConfig): GeneratedBatch {
 function ensureScenarioCoverage(rng: Rng, cases: GeneratedCase[], emailPool: string[], pools: CustomerPools) {
   const hasStopCandidate = cases.some((c) => c.contact_attempts >= 3);
   const hasEscalationCandidate = cases.some((c) => c.customer_tier === "b2b" && c.amount >= 80000);
+  // A large invoice that has only just gone overdue and nobody has chased
+  // yet — the case where a live call is the right first move rather than an
+  // analyst's time. Random draws rarely produce one (receivables are ~13% of
+  // cases and skew old), so the voice path would otherwise go unexercised.
+  const hasVoiceCandidate = cases.some(
+    (c) =>
+      c.risk_type === "overdue_receivable" &&
+      c.contact_attempts === 0 &&
+      c.days_since_failure <= 14 &&
+      c.amount >= 50_000 &&
+      c.amount <= AUTO_APPROVAL_LIMIT
+  );
 
   if (!hasStopCandidate && cases.length > 0) {
     const idx = uniformInt(rng, 0, cases.length - 1);
@@ -212,5 +225,24 @@ function ensureScenarioCoverage(rng: Rng, cases: GeneratedCase[], emailPool: str
       days_since_failure,
       evidence: generateEvidenceForCase(rng, risk_type, cases[idx].contact_attempts, days_since_failure, tenureBiasForTier("b2b")),
     };
+  }
+  if (!hasVoiceCandidate && cases.length > 2) {
+    // Pick a slot that isn't already carrying one of the guaranteed
+    // scenarios above, so coverage additions don't overwrite each other.
+    const idx = cases.findIndex((c) => c.contact_attempts < 3 && !(c.customer_tier === "b2b" && c.amount >= 80000));
+    if (idx !== -1) {
+      const risk_type: RiskType = "overdue_receivable";
+      const days_since_failure = uniformInt(rng, 5, 14);
+      cases[idx] = {
+        ...cases[idx],
+        ...pickCustomer(rng, pools, "b2b", emailPool),
+        customer_tier: "b2b",
+        risk_type,
+        amount: round2(logNormalRange(rng, 55_000, 95_000)),
+        contact_attempts: 0,
+        days_since_failure,
+        evidence: generateEvidenceForCase(rng, risk_type, 0, days_since_failure, tenureBiasForTier("b2b")),
+      };
+    }
   }
 }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServiceClient } from "@/lib/db/service-client";
 import { seedBatch } from "@/lib/generator/seed-batch";
+import { DEFAULT_DEMO_CASE_COUNT } from "@/lib/generator/demo-config";
 
 export async function GET() {
   const supabase = getServiceClient();
@@ -12,7 +13,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
   const name: string = body.name ?? `Batch ${new Date().toISOString()}`;
-  const caseCount: number = Number(body.caseCount ?? 150);
+  const caseCount: number = Number(body.caseCount ?? DEFAULT_DEMO_CASE_COUNT);
   const seed: string = body.seed ?? `seed-${Date.now()}`;
   const concurrency: number | undefined = body.concurrency ? Number(body.concurrency) : undefined;
 

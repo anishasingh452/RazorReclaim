@@ -1,12 +1,12 @@
 import type { ActionType, ImpactScore, RiskType, RootCauseResult } from "@/types/domain";
 import { enumerateCandidates } from "@/lib/candidates/candidate-engine";
 import {
-  ACTION_EFFECTIVENESS,
-  ESCALATE_RECOVERY_PROBABILITY,
   INTERVENTION_COST,
   QUALITATIVE_PROBABILITY,
+  actionEffectiveness,
   attemptDecay,
   escalateCost,
+  escalateProbability,
   timeDecay,
 } from "./config";
 
@@ -67,7 +67,7 @@ export function computeImpactScores(input: ImpactEngineInput): ImpactCandidate[]
     // came from the unrounded value, the published numbers wouldn't
     // reconcile with each other — a bad look for a decision the product
     // asks people to trust precisely because it's checkable arithmetic.
-    const recovery_probability = round3(clamp01(baseProbability * ACTION_EFFECTIVENESS[action] * decay));
+    const recovery_probability = round3(clamp01(baseProbability * actionEffectiveness(action, riskType) * decay));
     const intervention_cost = INTERVENTION_COST[action];
     const expected_recovery_value = round2(amount * recovery_probability - intervention_cost);
     candidates.push({
@@ -82,9 +82,10 @@ export function computeImpactScores(input: ImpactEngineInput): ImpactCandidate[]
     });
   }
 
-  // escalate: fixed operational baseline probability, cost scales with case value
+  // escalate: operational baseline probability, partly eroded by the case's
+  // age (see ESCALATE_AGING_FLOOR); cost scales with case value.
   const escCost = round2(escalateCost(amount));
-  const escProbability = round3(ESCALATE_RECOVERY_PROBABILITY);
+  const escProbability = round3(escalateProbability(daysSinceFailure, contactAttempts));
   candidates.push({
     action_type: "escalate",
     potential_recoverable_amount: amount,

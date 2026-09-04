@@ -183,6 +183,88 @@ describe("computeImpactScores", () => {
     expect(contacted.recovery_probability).toBeLessThan(fresh.recovery_probability);
   });
 
+  it("calls a high-value B2B receivable while it is still recoverable", () => {
+    // What voice exists for: a large invoice, recently stalled, where one
+    // live conversation clears the blocker for a fraction of an analyst's cost.
+    const candidates = computeImpactScores({
+      amount: 85_000,
+      riskType: "overdue_receivable",
+      contactAttempts: 0,
+      daysSinceFailure: 6,
+      rootCause: { qualitative_recovery_probability: "medium" },
+    });
+    expect(candidates.find((c) => c.selected)?.action_type).toBe("voice");
+  });
+
+  it("escalates a receivable automation has already chased", () => {
+    // Once cheap channels have had their turn, the analyst's flat baseline
+    // is earned and outweighs another automated touch.
+    const candidates = computeImpactScores({
+      amount: 85_000,
+      riskType: "overdue_receivable",
+      contactAttempts: 2,
+      daysSinceFailure: 65,
+      rootCause: { qualitative_recovery_probability: "medium" },
+    });
+    expect(candidates.find((c) => c.selected)?.action_type).toBe("escalate");
+  });
+
+  it("escalates a receivable the model has almost no hope for", () => {
+    const candidates = computeImpactScores({
+      amount: 85_000,
+      riskType: "overdue_receivable",
+      contactAttempts: 0,
+      daysSinceFailure: 6,
+      rootCause: { qualitative_recovery_probability: "very_low" },
+    });
+    expect(candidates.find((c) => c.selected)?.action_type).toBe("escalate");
+  });
+
+  it("does not boost voice outside the risk types where conversation is the blocker", () => {
+    const failedPayment = computeImpactScores({
+      amount: 20_000,
+      riskType: "failed_payment",
+      contactAttempts: 0,
+      daysSinceFailure: 10,
+      rootCause: { qualitative_recovery_probability: "medium" },
+    });
+    const voice = failedPayment.find((c) => c.action_type === "voice")!;
+    const retry = failedPayment.find((c) => c.action_type === "retry")!;
+    // A failed card payment is a technical failure — a silent retry still wins.
+    expect(voice.recovery_probability).toBeLessThan(retry.recovery_probability);
+    expect(failedPayment.find((c) => c.selected)?.action_type).not.toBe("voice");
+  });
+
+  it("discounts escalation on a case nobody has contacted yet", () => {
+    const escalateProbabilityAt = (attempts: number) =>
+      computeImpactScores({
+        amount: 50_000,
+        riskType: "failed_payment",
+        contactAttempts: attempts,
+        daysSinceFailure: 20,
+        rootCause: { qualitative_recovery_probability: "medium" },
+      }).find((c) => c.action_type === "escalate")!.recovery_probability;
+
+    // Handing over an untouched case skips the cheaper options entirely.
+    expect(escalateProbabilityAt(0)).toBeLessThan(escalateProbabilityAt(1));
+  });
+
+  it("erodes the escalation baseline as a case ages, but never to nothing", () => {
+    const probabilityAt = (days: number) =>
+      computeImpactScores({
+        amount: 50_000,
+        riskType: "failed_payment",
+        contactAttempts: 1,
+        daysSinceFailure: days,
+        rootCause: { qualitative_recovery_probability: "medium" },
+      }).find((c) => c.action_type === "escalate")!.recovery_probability;
+
+    expect(probabilityAt(0)).toBeGreaterThan(probabilityAt(45));
+    expect(probabilityAt(45)).toBeGreaterThan(probabilityAt(120));
+    // A human keeps a floor of their baseline no matter how stale the case.
+    expect(probabilityAt(3650)).toBeGreaterThan(0.15);
+  });
+
   it("publishes rows whose own numbers reconcile — ERV recomputes exactly from the stored probability and cost", () => {
     // The impact ledger shows probability, cost and ERV side by side and
     // invites the reader to check the arithmetic. Pricing off an unrounded

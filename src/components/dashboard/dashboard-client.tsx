@@ -20,6 +20,7 @@ import { LiveRunPanel } from "./live-run-panel";
 import { NewBatchDialog } from "./new-batch-dialog";
 import { BatchSwitcher } from "./batch-switcher";
 import { SegmentBar, type Segment } from "@/components/viz/segment-bar";
+import { DEFAULT_DEMO_CASE_COUNT } from "@/lib/generator/demo-config";
 
 const FILTERS: { key: CaseStatus | "all"; label: string }[] = [
   { key: "all", label: "All" },
@@ -111,8 +112,11 @@ export function DashboardClient() {
   async function handleQuickCreate() {
     setCreating(true);
     try {
-      const { batch } = await createBatch({ name: `Batch ${new Date().toLocaleString("en-IN")}`, caseCount: 150 });
-      toast.success("150-case batch seeded");
+      const { batch } = await createBatch({
+        name: `Batch ${new Date().toLocaleString("en-IN")}`,
+        caseCount: DEFAULT_DEMO_CASE_COUNT,
+      });
+      toast.success(`${DEFAULT_DEMO_CASE_COUNT}-case batch seeded`);
       await loadBatches();
       setBatchId(batch.id);
     } catch (err) {
@@ -211,7 +215,7 @@ export function DashboardClient() {
             className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.03] px-3 text-[13px] font-medium text-muted-foreground transition-colors hover:border-white/20 hover:text-foreground disabled:opacity-50"
           >
             {creating ? <Loader2 className="size-3.5 animate-spin" /> : <Zap className="size-3.5" />}
-            Quick 150
+            Quick {DEFAULT_DEMO_CASE_COUNT}
           </button>
           <button
             onClick={handleRun}

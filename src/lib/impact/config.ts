@@ -1,6 +1,8 @@
 // Tunable constants for the Business Impact Engine. Kept separate from the
 // math so thresholds can be justified/adjusted without touching logic.
 
+import type { RiskType } from "@/types/domain";
+
 export const QUALITATIVE_PROBABILITY: Record<
   "very_low" | "low" | "medium" | "high" | "very_high",
   number
@@ -41,6 +43,54 @@ export const ACTION_EFFECTIVENESS: Record<
  * auto-approval limit), not by borrowing the AI's optimism about automation.
  */
 export const ESCALATE_RECOVERY_PROBABILITY = 0.5;
+
+/**
+ * How much of a human's advantage survives an ageing case. Escalation used
+ * to be modelled as completely immune to age while every automated channel
+ * decayed — which is not true (a 90-day-old invoice is harder for an
+ * analyst too) and had the side effect of making escalation mathematically
+ * unbeatable on exactly the aged receivables where a conversation is the
+ * right tool. A human is *partly* insulated, not exempt: this floor keeps
+ * 35% of the baseline regardless of age, and lets the rest decay.
+ */
+export const ESCALATE_AGING_FLOOR = 0.35;
+
+/**
+ * A human's edge has to be earned. Handing a case nobody has contacted yet
+ * straight to an analyst skips every cheaper option that hasn't been tried,
+ * so escalation's baseline is discounted on a genuinely untouched case and
+ * paid in full once automation has had its turn.
+ */
+export const ESCALATE_FIRST_TOUCH_DISCOUNT = 0.6;
+
+export function escalateProbability(daysSinceFailure: number, contactAttempts: number): number {
+  const aged =
+    ESCALATE_RECOVERY_PROBABILITY *
+    (ESCALATE_AGING_FLOOR + (1 - ESCALATE_AGING_FLOOR) * timeDecay(daysSinceFailure));
+  return contactAttempts === 0 ? aged * ESCALATE_FIRST_TOUCH_DISCOUNT : aged;
+}
+
+/**
+ * Voice beats the generic channel baseline where the blocker is
+ * conversational rather than technical. An overdue receivable usually
+ * stalls on something a live call resolves in one pass — a disputed line
+ * item, a missing PO number, an approver on leave — which an email can
+ * only ask about and wait. Nothing here bypasses ERV or policy: the boost
+ * feeds the same probability the engine prices every option with, stays
+ * clamped by the same ceiling, and a large case is still forced to a human
+ * by the auto-approval limit.
+ */
+export const VOICE_EFFECTIVENESS_BY_RISK_TYPE: Partial<Record<RiskType, number>> = {
+  overdue_receivable: 1.45,
+};
+
+export function actionEffectiveness(
+  action: "retry" | "payment_link" | "reminder" | "wait_and_retry" | "voice",
+  riskType: RiskType
+): number {
+  if (action === "voice") return VOICE_EFFECTIVENESS_BY_RISK_TYPE[riskType] ?? ACTION_EFFECTIVENESS.voice;
+  return ACTION_EFFECTIVENESS[action];
+}
 
 /** Fixed nominal cost (INR) per automated intervention. */
 export const INTERVENTION_COST: Record<

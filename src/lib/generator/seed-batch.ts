@@ -1,7 +1,9 @@
 import { getServiceClient } from "@/lib/db/service-client";
-import { generateBatch, type GenerateBatchConfig } from "./case-generator";
+import { generateBatch, type GeneratedCase, type GenerateBatchConfig } from "./case-generator";
+import { createRng } from "./rng";
 import { buildAuditChain } from "@/lib/audit/hash-chain";
 import { AUDIT_EVENT } from "@/lib/audit/event-types";
+import { AUTO_APPROVAL_LIMIT, COOLDOWN_HOURS, MAX_RETRY_ATTEMPTS } from "@/lib/policy/config";
 import type { Batch, RiskType, Signal } from "@/types/domain";
 
 export interface SeedBatchInput {
@@ -191,5 +193,74 @@ export async function seedBatch(input: SeedBatchInput): Promise<SeedBatchResult>
   const auditRows = buildAuditChain(auditDrafts);
   await insertInChunks("audit_log", auditRows as unknown as Record<string, unknown>[], supabase);
 
+  // 6. Prior contact history for a few cases, so the cooldown guardrail has
+  // something real to act on.
+  await seedRecentContactHistory(input.seed, generated.cases, seqToId, supabase);
+
   return { batch, caseCount: generated.caseCount, totalAtRisk: generated.totalAtRisk };
+}
+
+/**
+ * Gives a deterministic minority of cases a genuine recent contact attempt.
+ *
+ * Without this, every seeded case is pristine: no case has a prior
+ * execution, so COOLDOWN_PERIOD_ACTIVE can never fail, `wait_and_retry` is
+ * never chosen, and the defer path plus the scheduled_actions it books are
+ * unreachable — a whole branch of the product that could never be
+ * demonstrated. Real portfolios are not pristine; some cases were worked
+ * hours ago and should be left alone until the window reopens.
+ *
+ * Eligibility is chosen so the cooldown rule is the one that actually
+ * decides these cases: `wait_and_retry` must be feasible for the risk type,
+ * the amount must sit under the auto-approval limit (or policy escalates
+ * first), and attempts must stay under the frequency caps (which take
+ * precedence over cooldown).
+ */
+async function seedRecentContactHistory(
+  seed: string,
+  cases: GeneratedCase[],
+  seqToId: Map<number, string>,
+  supabase: ReturnType<typeof getServiceClient>
+): Promise<void> {
+  const eligible = cases.filter(
+    (c) =>
+      (c.risk_type === "failed_payment" || c.risk_type === "subscription_failure") &&
+      c.contact_attempts >= 1 &&
+      c.contact_attempts < MAX_RETRY_ATTEMPTS &&
+      c.amount <= AUTO_APPROVAL_LIMIT
+  );
+  if (eligible.length === 0) return;
+
+  const rng = createRng(`${seed}:contact-history`);
+  // A fifth of eligible cases, but never zero — a demo batch should always
+  // contain at least one case the system decides to leave alone for now.
+  const target = Math.max(1, Math.round(eligible.length * 0.2));
+  const chosen = eligible.filter(() => rng() < 0.2).slice(0, target);
+  if (chosen.length === 0) chosen.push(eligible[0]);
+
+  const rows = chosen.flatMap((c) => {
+    const caseId = seqToId.get(c.seq);
+    if (!caseId) return [];
+    // Inside the cooldown window, so the guardrail defers rather than acts.
+    const hoursAgo = 2 + Math.floor(rng() * (COOLDOWN_HOURS - 8));
+    const at = new Date(Date.now() - hoursAgo * 3_600_000).toISOString();
+    return [
+      {
+        case_id: caseId,
+        action_type: c.risk_type === "subscription_failure" ? "retry" : "reminder",
+        provider: "simulated" as const,
+        external_ref: null,
+        status: "success" as const,
+        idempotency_key: `${caseId}:seeded-history:${at}`,
+        request_payload: {
+          note: "Seeded prior contact history — an earlier attempt on this case, before this batch ran",
+          hours_ago: hoursAgo,
+        },
+        response_payload: null,
+        created_at: at,
+      },
+    ];
+  });
+
+  if (rows.length > 0) await insertInChunks("executions", rows, supabase);
 }
