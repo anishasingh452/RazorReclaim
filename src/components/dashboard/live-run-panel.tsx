@@ -46,7 +46,7 @@ export function LiveRunPanel({ running, events, stageCounts, processed, total }:
   return (
     <section className={`glass p-5 ${running ? "beam-ring" : ""}`}>
       <div className="mb-4 flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="flex size-7 items-center justify-center rounded-lg border border-blue-500/25 bg-blue-500/10 text-blue-300">
+        <span className="flex size-7 items-center justify-center rounded-lg border border-sky-500/20 bg-sky-500/[0.08] text-sky-200">
           <Activity className="size-3.5" />
         </span>
         <span className="text-sm font-medium">Agent pipeline</span>
@@ -64,7 +64,7 @@ export function LiveRunPanel({ running, events, stageCounts, processed, total }:
 
       <div className="mb-5 h-0.5 overflow-hidden rounded-full bg-white/[0.06]">
         <div
-          className="h-full rounded-full bg-emerald-400 shadow-[0_0_12px_oklch(0.77_0.15_165)] transition-[width] duration-700 ease-out"
+          className="h-full rounded-full bg-emerald-400 shadow-[0_0_8px_-2px_oklch(0.74_0.12_168/0.5)] transition-[width] duration-700 ease-out"
           style={{ width: `${percent}%` }}
         />
       </div>

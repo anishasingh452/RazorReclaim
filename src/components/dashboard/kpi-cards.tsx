@@ -45,7 +45,7 @@ export function KpiCards({ detail, conflictCount }: KpiCardsProps) {
       format: formatInrCompact,
       icon: TrendingUp,
       accent: "text-emerald-300",
-      bar: "oklch(0.77 0.15 165)",
+      bar: "oklch(0.74 0.12 168)",
       progress: atRisk > 0 ? recovered / atRisk : 0,
     },
     {
@@ -54,7 +54,7 @@ export function KpiCards({ detail, conflictCount }: KpiCardsProps) {
       format: (n: number) => `${n.toFixed(1)}%`,
       icon: Gauge,
       accent: "text-emerald-300",
-      bar: "oklch(0.77 0.15 165)",
+      bar: "oklch(0.74 0.12 168)",
       progress: recoveryRate / 100,
     },
     {
@@ -62,7 +62,7 @@ export function KpiCards({ detail, conflictCount }: KpiCardsProps) {
       value: erv,
       format: formatInrCompact,
       icon: ShieldCheck,
-      accent: "text-blue-300",
+      accent: "text-sky-200",
       bar: null,
       progress: null,
     },
@@ -72,7 +72,7 @@ export function KpiCards({ detail, conflictCount }: KpiCardsProps) {
       format: (n: number) => `${Math.round(n)}/${totalCases}`,
       icon: ListChecks,
       accent: "text-foreground",
-      bar: "oklch(0.7 0.15 250)",
+      bar: "oklch(0.68 0.085 245)",
       progress: totalCases > 0 ? processed / totalCases : 0,
     },
     {
@@ -80,7 +80,7 @@ export function KpiCards({ detail, conflictCount }: KpiCardsProps) {
       value: decisionsExecuted,
       format: (n: number) => String(Math.round(n)),
       icon: Bot,
-      accent: "text-violet-300",
+      accent: "text-indigo-200",
       bar: null,
       progress: null,
     },
@@ -108,7 +108,6 @@ export function KpiCards({ detail, conflictCount }: KpiCardsProps) {
                 style={{
                   width: `${Math.min(Math.max(card.progress * 100, 0), 100)}%`,
                   background: card.bar ?? "oklch(1 0 0 / 0.3)",
-                  boxShadow: card.bar ? `0 0 12px ${card.bar}` : undefined,
                 }}
               />
             )}

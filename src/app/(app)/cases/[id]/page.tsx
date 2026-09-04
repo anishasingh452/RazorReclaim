@@ -104,7 +104,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
       <header className="rise glass relative overflow-hidden p-5">
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-32 -right-20 size-72 rounded-full bg-emerald-500/[0.06] blur-3xl"
+          className="pointer-events-none absolute -top-32 -right-20 size-72 rounded-full bg-emerald-500/[0.03] blur-3xl"
         />
         <div className="relative flex flex-wrap items-start justify-between gap-5">
           <div className="flex min-w-0 items-center gap-3.5">
@@ -184,7 +184,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
       {noActionDecision && <WhyNotToAct decision={noActionDecision} finalAction={c.final_action} />}
 
       {pendingApproval && (
-        <section className="rise glass border-amber-500/20 p-5 shadow-[0_0_60px_-40px_oklch(0.8_0.16_85)]">
+        <section className="rise glass border-amber-500/20 p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="micro-label text-amber-300/80">Human decision required</div>
@@ -204,7 +204,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
         <ReasoningCard
           icon={<Stethoscope className="size-3.5" />}
           title="Root cause diagnosis"
-          tone="border-blue-500/25 bg-blue-500/10 text-blue-300"
+          tone="border-sky-500/20 bg-sky-500/[0.08] text-sky-200"
           model={rootCauseDecision?.model}
           delay={180}
         >
@@ -226,7 +226,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
         <ReasoningCard
           icon={<Sparkles className="size-3.5" />}
           title="AI recommendation"
-          tone="border-violet-500/25 bg-violet-500/10 text-violet-300"
+          tone="border-indigo-400/20 bg-indigo-400/[0.08] text-indigo-200"
           model={recommendDecision?.model}
           delay={230}
         >
@@ -308,7 +308,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
                   {e.provider === "razorpay" || e.provider === "resend" ? `real · ${e.provider}` : e.provider}
                 </span>
                 <span
-                  className={`text-[11px] font-medium ${e.status === "success" ? "text-emerald-300" : "text-red-300"}`}
+                  className={`text-[11px] font-medium ${e.status === "success" ? "text-emerald-300" : "text-rose-300"}`}
                 >
                   {e.status}
                 </span>

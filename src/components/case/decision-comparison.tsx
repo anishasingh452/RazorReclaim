@@ -108,19 +108,19 @@ export function DecisionComparison(props: DecisionComparisonProps) {
 
 const TONE: Record<"ai" | "engine" | "policy", { text: string; ring: string; icon: string }> = {
   ai: {
-    text: "text-blue-300",
-    ring: "shadow-[0_0_40px_-24px_oklch(0.7_0.15_250)]",
-    icon: "bg-blue-500/10 text-blue-300 border-blue-500/25",
+    text: "text-sky-300",
+    ring: "",
+    icon: "bg-sky-500/[0.08] text-sky-200 border-sky-500/20",
   },
   engine: {
     text: "text-emerald-300",
-    ring: "shadow-[0_0_40px_-24px_oklch(0.77_0.15_165)]",
+    ring: "",
     icon: "bg-emerald-500/10 text-emerald-300 border-emerald-500/25",
   },
   policy: {
     text: "text-amber-300",
-    ring: "shadow-[0_0_40px_-24px_oklch(0.8_0.16_85)]",
-    icon: "bg-amber-500/10 text-amber-300 border-amber-500/25",
+    ring: "",
+    icon: "bg-amber-500/[0.08] text-amber-200 border-amber-500/20",
   },
 };
 

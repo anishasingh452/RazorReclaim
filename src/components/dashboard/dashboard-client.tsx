@@ -220,7 +220,7 @@ export function DashboardClient() {
           <button
             onClick={handleRun}
             disabled={!batchId || running || openCount === 0}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/15 px-3.5 text-[13px] font-semibold text-emerald-300 shadow-[0_0_35px_-12px_oklch(0.77_0.15_165)] transition-all hover:border-emerald-400/50 hover:bg-emerald-500/25 disabled:pointer-events-none disabled:opacity-40"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-500/12 px-3.5 text-[13px] font-semibold text-emerald-300 transition-all hover:border-emerald-400/50 hover:bg-emerald-500/25 disabled:pointer-events-none disabled:opacity-40"
           >
             {running ? <Loader2 className="size-3.5 animate-spin" /> : <Play className="size-3.5" />}
             {running ? "Running…" : `Run AI recovery${openCount ? ` (${openCount})` : ""}`}
@@ -272,7 +272,7 @@ export function DashboardClient() {
                   onClick={() => setFilter(f.key)}
                   className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition-colors ${
                     filter === f.key
-                      ? "border-emerald-500/30 bg-emerald-500/15 text-emerald-300"
+                      ? "border-emerald-500/30 bg-emerald-500/12 text-emerald-300"
                       : "border-white/10 text-muted-foreground hover:border-white/20 hover:text-foreground"
                   }`}
                 >

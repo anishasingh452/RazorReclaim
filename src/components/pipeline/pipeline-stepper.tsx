@@ -4,15 +4,15 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export type StageStatus = "done" | "active" | "pending" | "skipped";
 
 const NODE_CLASS: Record<StageStatus, string> = {
-  done: "bg-emerald-400 shadow-[0_0_16px_-2px_oklch(0.77_0.15_165)] ring-[3px] ring-emerald-400/15",
-  active: "bg-blue-400 shadow-[0_0_18px_-1px_oklch(0.7_0.15_250)] ring-[4px] ring-blue-400/25",
+  done: "bg-emerald-400 ring-[3px] ring-emerald-400/15",
+  active: "bg-sky-300 ring-[4px] ring-sky-300/20",
   pending: "bg-white/15 ring-[3px] ring-white/[0.04]",
   skipped: "bg-white/[0.08] ring-[3px] ring-white/[0.02]",
 };
 
 const LABEL_CLASS: Record<StageStatus, string> = {
   done: "text-foreground/85",
-  active: "text-blue-300",
+  active: "text-sky-200",
   pending: "text-muted-foreground/70",
   skipped: "text-muted-foreground/35 line-through decoration-white/20",
 };
@@ -55,7 +55,7 @@ export function PipelineStepper({
                 <span className="relative flex h-3 items-center">
                   <span className={`size-2.5 rounded-full transition-all duration-500 ${NODE_CLASS[status]}`} />
                   {status === "active" && (
-                    <span className="absolute inset-0 m-auto size-2.5 animate-ping rounded-full bg-blue-400/60" />
+                    <span className="absolute inset-0 m-auto size-2.5 animate-ping rounded-full bg-sky-300/40" />
                   )}
                 </span>
                 <span className="flex flex-col items-center gap-0.5">
@@ -78,10 +78,10 @@ export function PipelineStepper({
                   connectorDone
                     ? "bg-gradient-to-r from-emerald-400/50 to-emerald-400/25"
                     : connectorActive
-                      ? "stream bg-blue-400/15"
+                      ? "stream bg-sky-300/12"
                       : "bg-white/[0.07]"
                 }`}
-                style={connectorActive ? ({ "--stream-color": "oklch(0.7 0.15 250)" } as React.CSSProperties) : undefined}
+                style={connectorActive ? ({ "--stream-color": "oklch(0.68 0.085 245)" } as React.CSSProperties) : undefined}
               />
             )}
           </div>

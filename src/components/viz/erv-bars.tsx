@@ -19,7 +19,7 @@ export function ErvBars({ scores }: { scores: ImpactScore[] }) {
         {feasible.map((score, i) => {
           const width = Math.max((Math.abs(score.expected_recovery_value) / maxErv) * 100, 1.5);
           const negative = score.expected_recovery_value < 0;
-          const fill = negative ? "oklch(0.65 0.2 25)" : ACTION_FILL[score.action_type];
+          const fill = negative ? "oklch(0.62 0.115 22)" : ACTION_FILL[score.action_type];
 
           return (
             <div
@@ -41,7 +41,7 @@ export function ErvBars({ scores }: { scores: ImpactScore[] }) {
                   style={{
                     width: `${width}%`,
                     background: `linear-gradient(90deg, ${fill}22, ${fill}bb)`,
-                    boxShadow: score.selected ? `0 0 22px -6px ${fill}` : undefined,
+                    
                   }}
                 />
                 <span className="absolute inset-y-0 left-2 flex items-center gap-2 text-[10px] text-white/45">
@@ -54,7 +54,7 @@ export function ErvBars({ scores }: { scores: ImpactScore[] }) {
               <div className="flex items-center gap-2 text-right">
                 <span
                   className={`stat-value text-sm font-semibold ${
-                    negative ? "text-red-300" : score.selected ? "text-emerald-300" : "text-foreground/80"
+                    negative ? "text-rose-300" : score.selected ? "text-emerald-300" : "text-foreground/80"
                   }`}
                 >
                   {formatInrPrecise(score.expected_recovery_value)}

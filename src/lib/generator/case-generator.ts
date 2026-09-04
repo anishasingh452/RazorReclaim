@@ -21,7 +21,7 @@ export interface GeneratedCase {
 export interface GenerateBatchConfig {
   seed: string;
   caseCount: number; // 50-200
-  demoEmailBase: string; // e.g. anishasingh452@gmail.com
+  demoEmailBase: string; // e.g. you@example.com
   demoEmailPoolSize: number;
 }
 

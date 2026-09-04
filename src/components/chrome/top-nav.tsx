@@ -33,7 +33,7 @@ export function TopNav() {
             }`}
           >
             {active && (
-              <span className="absolute inset-0 rounded-lg border border-white/10 bg-white/[0.05] shadow-[0_0_20px_-8px_oklch(0.77_0.15_165/0.6)]" />
+              <span className="absolute inset-0 rounded-lg border border-white/10 bg-white/[0.06]" />
             )}
             <link.icon
               className={`relative size-3.5 transition-colors ${

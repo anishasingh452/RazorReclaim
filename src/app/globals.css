@@ -76,14 +76,20 @@
   --ring: oklch(0.77 0.15 165 / 45%);
 
   /* Semantic signal colors — one definition, used by every chart, badge and
-     glow in the app so "AI blue" or "human violet" means the same thing
-     everywhere. */
-  --signal-ai: oklch(0.7 0.15 250);
-  --signal-engine: oklch(0.77 0.15 165);
-  --signal-policy: oklch(0.8 0.16 85);
-  --signal-human: oklch(0.7 0.16 300);
-  --signal-stop: oklch(0.65 0.2 25);
-  --signal-voice: oklch(0.75 0.13 195);
+     glow in the app so "AI blue" or "human indigo" means the same thing
+     everywhere.
+
+     Deliberately low-chroma. This is a finance product: operators read these
+     surfaces for hours, and money decisions should look considered rather
+     than alarming. Emerald carries the brand and stays the most saturated
+     thing on screen so it reads as *the* accent; everything else sits back
+     far enough that four badges in one row never compete. */
+  --signal-ai: oklch(0.68 0.085 245);
+  --signal-engine: oklch(0.74 0.12 168);
+  --signal-policy: oklch(0.76 0.1 78);
+  --signal-human: oklch(0.66 0.075 280);
+  --signal-stop: oklch(0.62 0.115 22);
+  --signal-voice: oklch(0.72 0.085 195);
 
   --chart-1: var(--signal-engine);
   --chart-2: var(--signal-ai);
@@ -108,13 +114,15 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* The ambient field the whole product sits on: three slow, very low
-       opacity light sources. Fixed attachment so it reads as depth behind
-       the UI rather than page decoration that scrolls away. */
+    /* The ambient field the whole product sits on: slow, very low opacity
+       light sources. Fixed attachment so it reads as depth behind the UI
+       rather than page decoration that scrolls away. Kept faint and on a
+       single warm-emerald / cool-slate axis — a coloured wash strong enough
+       to notice is the fastest way to make a working tool look like a toy. */
     background-image:
-      radial-gradient(ellipse 80% 50% at 15% -10%, oklch(0.77 0.15 165 / 0.1), transparent 60%),
-      radial-gradient(ellipse 60% 45% at 85% 0%, oklch(0.7 0.16 300 / 0.08), transparent 60%),
-      radial-gradient(ellipse 70% 40% at 50% 100%, oklch(0.7 0.15 250 / 0.06), transparent 65%);
+      radial-gradient(ellipse 80% 50% at 15% -10%, oklch(0.74 0.12 168 / 0.055), transparent 60%),
+      radial-gradient(ellipse 60% 45% at 85% 0%, oklch(0.66 0.06 265 / 0.04), transparent 60%),
+      radial-gradient(ellipse 70% 40% at 50% 100%, oklch(0.68 0.05 240 / 0.03), transparent 65%);
     background-attachment: fixed;
     background-repeat: no-repeat;
   }
@@ -157,20 +165,20 @@
 @layer utilities {
   /* ---------- Surfaces ---------- */
 
-  /* The product's primary surface: frosted glass with a light catch along
-     the top edge, the way a physical pane picks up the light above it. */
+  /* The product's primary surface. A defined edge and an almost-flat fill
+     rather than a glossy pane: at this density of panels, a visible gradient
+     on every card reads as decoration and makes the data harder to scan.
+     Saturation is left at 100% so the ambient wash behind doesn't get
+     amplified into a colour cast across neutral surfaces. */
   .glass {
     position: relative;
     border-radius: var(--radius-2xl);
-    border: 1px solid oklch(1 0 0 / 0.09);
-    background:
-      linear-gradient(180deg, oklch(1 0 0 / 0.05) 0%, oklch(1 0 0 / 0.018) 42%, oklch(1 0 0 / 0.028) 100%);
-    backdrop-filter: blur(20px) saturate(125%);
-    /* Lifted off the ambient field: a hairline of caught light along the top
-       inside edge, and a deep soft shadow beneath. */
+    border: 1px solid oklch(1 0 0 / 0.095);
+    background: linear-gradient(180deg, oklch(1 0 0 / 0.038) 0%, oklch(1 0 0 / 0.026) 100%);
+    backdrop-filter: blur(18px);
     box-shadow:
-      0 1px 0 0 oklch(1 0 0 / 0.05) inset,
-      0 22px 50px -34px oklch(0 0 0 / 0.85);
+      0 1px 0 0 oklch(1 0 0 / 0.04) inset,
+      0 18px 40px -32px oklch(0 0 0 / 0.8);
     overflow: hidden;
   }
   .glass::before {
@@ -179,7 +187,7 @@
     inset-inline: 0;
     top: 0;
     height: 1px;
-    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.22), transparent);
+    background: linear-gradient(90deg, transparent, oklch(1 0 0 / 0.12), transparent);
     pointer-events: none;
   }
 
@@ -190,11 +198,13 @@
       box-shadow 220ms ease;
   }
   .glass-hover:hover {
-    border-color: oklch(1 0 0 / 0.15);
-    transform: translateY(-2px);
+    border-color: oklch(1 0 0 / 0.14);
+    /* A 1px lift reads as "this is interactive"; anything more and a page of
+       cards bounces as the cursor crosses it. */
+    transform: translateY(-1px);
     box-shadow:
-      0 1px 0 0 oklch(1 0 0 / 0.06) inset,
-      0 18px 45px -25px oklch(0 0 0 / 0.9);
+      0 1px 0 0 oklch(1 0 0 / 0.05) inset,
+      0 16px 36px -26px oklch(0 0 0 / 0.85);
   }
 
   /* A tighter, flatter surface for nested blocks that shouldn't compete
@@ -205,32 +215,36 @@
     background: oklch(0 0 0 / 0.25);
   }
 
-  /* ---------- Signal glows ---------- */
+  /* ---------- Signal accents ----------
+     Once a hairline edge, not a halo. These mark which engine owns a panel;
+     a bloom big enough to read across the page turns a decision surface into
+     a dashboard demo. The colour lives in the 1px ring, the shadow only adds
+     depth. */
 
   .glow-engine {
     box-shadow:
-      0 0 0 1px oklch(0.77 0.15 165 / 0.18),
-      0 20px 60px -30px oklch(0.77 0.15 165 / 0.55);
+      0 0 0 1px oklch(0.74 0.12 168 / 0.16),
+      0 14px 34px -28px oklch(0.74 0.12 168 / 0.22);
   }
   .glow-ai {
     box-shadow:
-      0 0 0 1px oklch(0.7 0.15 250 / 0.18),
-      0 20px 60px -30px oklch(0.7 0.15 250 / 0.5);
+      0 0 0 1px oklch(0.68 0.085 245 / 0.16),
+      0 14px 34px -28px oklch(0.68 0.085 245 / 0.2);
   }
   .glow-policy {
     box-shadow:
-      0 0 0 1px oklch(0.8 0.16 85 / 0.2),
-      0 20px 60px -30px oklch(0.8 0.16 85 / 0.5);
+      0 0 0 1px oklch(0.76 0.1 78 / 0.18),
+      0 14px 34px -28px oklch(0.76 0.1 78 / 0.2);
   }
   .glow-human {
     box-shadow:
-      0 0 0 1px oklch(0.7 0.16 300 / 0.2),
-      0 20px 60px -30px oklch(0.7 0.16 300 / 0.5);
+      0 0 0 1px oklch(0.66 0.075 280 / 0.18),
+      0 14px 34px -28px oklch(0.66 0.075 280 / 0.2);
   }
   .glow-stop {
     box-shadow:
-      0 0 0 1px oklch(0.65 0.2 25 / 0.2),
-      0 20px 60px -30px oklch(0.65 0.2 25 / 0.5);
+      0 0 0 1px oklch(0.62 0.115 22 / 0.18),
+      0 14px 34px -28px oklch(0.62 0.115 22 / 0.2);
   }
 
   /* ---------- Typography ---------- */

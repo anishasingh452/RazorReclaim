@@ -17,7 +17,7 @@ const PILLARS = [
     icon: ScanSearch,
     title: "Diagnose",
     body: "An LLM reads the gateway, checkout and ledger evidence behind each failure and names the actual cause — not a status code.",
-    tone: "text-blue-300 border-blue-500/25 bg-blue-500/10",
+    tone: "text-sky-200 border-sky-500/25 bg-sky-500/10",
   },
   {
     icon: Scale,
@@ -29,7 +29,7 @@ const PILLARS = [
     icon: Fingerprint,
     title: "Justify",
     body: "Every step is written into a SHA-256 hash chain, re-verified on read. If a record were altered, the page would say so.",
-    tone: "text-violet-300 border-violet-500/25 bg-violet-500/10",
+    tone: "text-indigo-200 border-indigo-400/25 bg-indigo-400/10",
   },
 ];
 
@@ -61,7 +61,7 @@ export default async function LandingPage() {
             style={{ top: "10%", right: "2%", animationDelay: "-7s" }}
           />
           <div
-            className="bloom size-[26rem] bg-violet-600/15"
+            className="bloom size-[26rem] bg-indigo-500/12"
             style={{ bottom: "4%", left: "34%", animationDelay: "-14s" }}
           />
 
@@ -281,7 +281,7 @@ export default async function LandingPage() {
                 {
                   label: "Hash-linked events",
                   value: stats.chainedAuditEvents.toLocaleString("en-IN"),
-                  accent: "text-violet-300",
+                  accent: "text-indigo-200",
                 },
               ].map((stat, i) => (
                 <Reveal key={stat.label} delay={i * 90}>

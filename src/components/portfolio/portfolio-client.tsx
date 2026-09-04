@@ -22,7 +22,7 @@ import type { Batch, RankedPortfolioOpportunity } from "@/types/domain";
 
 /** Older cases read hotter — the recovery window is visibly closing. */
 function ageTone(days: number): string {
-  if (days >= 45) return "text-red-300";
+  if (days >= 45) return "text-rose-300";
   if (days >= 21) return "text-amber-300";
   return "text-muted-foreground";
 }

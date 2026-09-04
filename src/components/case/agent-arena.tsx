@@ -14,14 +14,14 @@ import type { AgentConflict, AgentProposal, AgentProposalStatus } from "@/types/
 const STATUS_TAG: Record<AgentProposalStatus, { label: string; className: string }> = {
   selected: { label: "ERV winner", className: "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" },
   rejected_conflict: { label: "Not selected", className: "border-white/10 bg-white/[0.03] text-zinc-400" },
-  rejected_governor: { label: "Governor blocked", className: "border-red-500/25 bg-red-500/10 text-red-300" },
-  proposed: { label: "Proposed", className: "border-amber-500/25 bg-amber-500/10 text-amber-300" },
+  rejected_governor: { label: "Governor blocked", className: "border-rose-500/25 bg-rose-500/[0.08] text-rose-200" },
+  proposed: { label: "Proposed", className: "border-amber-500/25 bg-amber-500/[0.08] text-amber-200" },
 };
 
 const SEVERITY_RING: Record<1 | 2 | 3, string> = {
-  1: "border-white/15 bg-white/[0.04] text-zinc-300",
-  2: "border-amber-500/30 bg-amber-500/10 text-amber-300",
-  3: "border-red-500/30 bg-red-500/10 text-red-300",
+  1: "border-white/12 bg-white/[0.04] text-zinc-300",
+  2: "border-amber-500/25 bg-amber-500/[0.08] text-amber-200",
+  3: "border-rose-500/25 bg-rose-500/[0.08] text-rose-200",
 };
 
 /**
@@ -106,7 +106,7 @@ function ProposalCard({ proposal, delay }: { proposal: AgentProposal; delay: num
   return (
     <div
       className={`rise glass glass-hover flex flex-col gap-3 p-4 ${
-        won ? "ring-1 ring-emerald-500/25 shadow-[0_0_50px_-30px_oklch(0.77_0.15_165)]" : ""
+        won ? "ring-1 ring-emerald-500/25" : ""
       }`}
       style={{ "--d": `${delay}ms` } as React.CSSProperties}
     >
@@ -115,8 +115,8 @@ function ProposalCard({ proposal, delay }: { proposal: AgentProposal; delay: num
           <span
             className={`flex size-8 items-center justify-center rounded-lg border ${
               isPrimary
-                ? "border-blue-500/25 bg-blue-500/10 text-blue-300"
-                : "border-violet-500/25 bg-violet-500/10 text-violet-300"
+                ? "border-sky-500/20 bg-sky-500/[0.08] text-sky-200"
+                : "border-indigo-400/20 bg-indigo-400/[0.08] text-indigo-200"
             }`}
           >
             {isPrimary ? <Bot className="size-4" /> : <Radio className="size-4" />}
@@ -152,7 +152,7 @@ function ProposalCard({ proposal, delay }: { proposal: AgentProposal; delay: num
           </div>
           <div className="h-1 overflow-hidden rounded-full bg-white/[0.06]">
             <div
-              className={`h-full rounded-full transition-[width] duration-700 ${isPrimary ? "bg-blue-400/70" : "bg-violet-400/70"}`}
+              className={`h-full rounded-full transition-[width] duration-700 ${isPrimary ? "bg-sky-400/60" : "bg-indigo-300/60"}`}
               style={{ width: `${Math.max(confidence * 100, 2)}%` }}
             />
           </div>
@@ -179,7 +179,7 @@ function ArenaNode({ conflict }: { conflict: AgentConflict | null }) {
         }`}
       >
         {severity ? <Zap className="size-4" /> : <Check className="size-4" />}
-        {severity === 3 && <span className="absolute inset-0 animate-ping rounded-full bg-red-400/20" />}
+        {severity === 3 && <span className="absolute inset-0 animate-ping rounded-full bg-rose-400/15" />}
       </span>
 
       <span className="hidden h-8 w-px bg-gradient-to-t from-transparent to-white/10 md:block" />

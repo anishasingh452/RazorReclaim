@@ -14,17 +14,21 @@ export function PipelineLoop() {
 
         return (
           <div key={stage.key} className="flex min-w-0 flex-1 items-start last:flex-none">
-            <div className="flex w-20 shrink-0 flex-col items-center gap-3 sm:w-auto sm:min-w-[7rem]">
+            {/* Fixed column width, and the hint constrained to it. Previously
+                the column was min-width 7rem while the hint underneath was
+                allowed 9rem, so every description spilled past its own column
+                and collided with its neighbour's. */}
+            <div className="flex w-[5.5rem] shrink-0 flex-col items-center gap-2.5 sm:w-[7rem]">
               <span className="flex h-3 items-center">
                 <span
                   className="pulse-node size-2 rounded-full bg-emerald-400"
                   style={{ animationDelay: delay }}
                 />
               </span>
-              <span className="text-center text-[11px] leading-tight font-medium text-white/70 sm:text-xs">
+              <span className="text-center text-[11px] leading-tight font-medium text-balance text-white/70 sm:text-xs">
                 {stage.label}
               </span>
-              <span className="hidden max-w-[9rem] text-center text-[10.5px] leading-snug text-white/35 lg:block">
+              <span className="hidden max-w-full px-1 text-center text-[10.5px] leading-snug text-balance text-white/35 lg:block">
                 {stage.hint}
               </span>
             </div>

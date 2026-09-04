@@ -40,12 +40,12 @@ export function WhyNotToAct({
   const alternatives = parseAlternatives(decision.alternatives_considered ?? []);
 
   return (
-    <section className="rise glass relative overflow-hidden p-5 shadow-[0_0_60px_-40px_oklch(0.8_0.16_85)]">
+    <section className="rise glass relative overflow-hidden border-amber-500/20 p-5">
       {/* Warm ambient wash behind the emblem — this is a considered
           judgment, not an error state, so it reads amber-gold rather than red. */}
       <div
         aria-hidden
-        className="pointer-events-none absolute -top-24 -left-16 size-64 rounded-full bg-amber-400/[0.07] blur-3xl"
+        className="pointer-events-none absolute -top-24 -left-16 size-64 rounded-full bg-amber-400/[0.035] blur-3xl"
       />
 
       <div className="relative flex flex-col gap-5 sm:flex-row sm:items-start">
@@ -83,7 +83,7 @@ export function WhyNotToAct({
                     >
                       {ACTION_LABEL[alt.action]}
                     </span>
-                    <span className={`stat-value ${alt.erv > 0 ? "text-foreground/70" : "text-red-300/80"}`}>
+                    <span className={`stat-value ${alt.erv > 0 ? "text-foreground/70" : "text-rose-300/80"}`}>
                       {formatInrPrecise(alt.erv)}
                     </span>
                   </span>
@@ -107,13 +107,13 @@ function Emblem() {
           cy="40"
           r="37"
           fill="none"
-          stroke="oklch(0.8 0.16 85 / 0.25)"
+          stroke="oklch(0.76 0.1 78 / 0.22)"
           strokeWidth="1"
           strokeDasharray="3 7"
           className="animate-spin [animation-duration:18s]"
           style={{ transformOrigin: "40px 40px" }}
         />
-        <circle cx="40" cy="40" r="28" fill="oklch(0.8 0.16 85 / 0.06)" stroke="oklch(0.8 0.16 85 / 0.2)" />
+        <circle cx="40" cy="40" r="28" fill="oklch(0.76 0.1 78 / 0.05)" stroke="oklch(0.76 0.1 78 / 0.18)" />
       </svg>
       <CircleSlash className="relative size-7 text-amber-300/80" strokeWidth={1.5} />
     </div>

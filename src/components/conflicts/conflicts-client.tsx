@@ -70,7 +70,7 @@ export function ConflictsClient() {
     <div className="mx-auto max-w-5xl space-y-5 px-5 py-8 md:px-8">
       <div className="rise flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[10px] font-medium tracking-[0.18em] text-violet-400 uppercase">
+          <div className="flex items-center gap-1.5 text-[10px] font-medium tracking-[0.18em] text-indigo-300 uppercase">
             <GitBranch className="size-3" />
             Agent governance
           </div>
@@ -90,7 +90,7 @@ export function ConflictsClient() {
             onClick={() => setFilter(f.key)}
             className={`rounded-full border px-3 py-1 text-[11px] font-medium transition-colors ${
               filter === f.key
-                ? "border-violet-500/30 bg-violet-500/15 text-violet-300"
+                ? "border-indigo-400/25 bg-indigo-400/10 text-indigo-200"
                 : "border-white/10 text-muted-foreground hover:border-white/20 hover:text-foreground"
             }`}
           >
@@ -197,8 +197,8 @@ function MiniProposal({ proposal, won }: { proposal: ConflictProposalSummary; wo
         <span
           className={`flex size-6 items-center justify-center rounded-md border ${
             isPrimary
-              ? "border-blue-500/25 bg-blue-500/10 text-blue-300"
-              : "border-violet-500/25 bg-violet-500/10 text-violet-300"
+              ? "border-sky-500/20 bg-sky-500/[0.08] text-sky-200"
+              : "border-indigo-400/20 bg-indigo-400/[0.08] text-indigo-200"
           }`}
         >
           {isPrimary ? <Bot className="size-3" /> : <Radio className="size-3" />}

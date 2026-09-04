@@ -31,7 +31,7 @@ export function CustomerMemory({
 
   return (
     <div className="glass flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
-      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-violet-500/25 bg-violet-500/10 text-violet-300">
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-indigo-400/20 bg-indigo-400/[0.08] text-indigo-200">
         <Brain className="size-3.5" />
       </span>
 

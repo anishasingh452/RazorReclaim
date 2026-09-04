@@ -66,7 +66,7 @@ export function DecisionGraph({
               <span className="relative z-10 mt-1.5 flex size-[15px] items-center justify-center">
                 <span
                   className={`size-2 rounded-full ring-4 ring-background ${
-                    broken ? "bg-red-400" : AUDIT_ACTOR_DOT[event.actor]
+                    broken ? "bg-rose-400" : AUDIT_ACTOR_DOT[event.actor]
                   }`}
                 />
               </span>
@@ -132,15 +132,15 @@ function IntegrityBanner({ integrity }: { integrity: AuditChainIntegrity }) {
   return (
     <div
       className={`inset-panel flex flex-wrap items-center gap-x-3 gap-y-1.5 px-3.5 py-2.5 ${
-        intact ? "" : "border-red-500/25 bg-red-500/[0.06]"
+        intact ? "" : "border-rose-500/25 bg-rose-500/[0.05]"
       }`}
     >
       {intact ? (
         <ShieldCheck className="size-4 shrink-0 text-emerald-400" />
       ) : (
-        <ShieldAlert className="size-4 shrink-0 text-red-400" />
+        <ShieldAlert className="size-4 shrink-0 text-rose-400" />
       )}
-      <span className={`text-[13px] font-medium ${intact ? "text-emerald-300" : "text-red-300"}`}>
+      <span className={`text-[13px] font-medium ${intact ? "text-emerald-300" : "text-rose-300"}`}>
         {intact ? "Hash chain verified" : `Chain integrity broken at event #${(brokenAtIndex ?? 0) + 1}`}
       </span>
       <span className="text-xs text-muted-foreground">

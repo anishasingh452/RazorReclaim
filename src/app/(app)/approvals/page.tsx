@@ -123,7 +123,7 @@ export default async function ApprovalsPage() {
                       )}
                       <span className="micro-label">{approval.cases?.customer_tier}</span>
                       {conflicted.has(approval.case_id) && (
-                        <span className="inline-flex items-center gap-1 rounded border border-violet-500/25 bg-violet-500/10 px-1.5 py-0 text-[10px] font-medium text-violet-300">
+                        <span className="inline-flex items-center gap-1 rounded border border-indigo-400/20 bg-indigo-400/[0.08] px-1.5 py-0 text-[10px] font-medium text-indigo-200">
                           <GitBranch className="size-2.5" />
                           Agents disagreed
                         </span>

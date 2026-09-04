@@ -20,10 +20,10 @@ export function narrateEvent(event: BatchStreamEvent): NarrativeLine {
     case "root_cause":
       return {
         text: `Diagnosed — ${name}: ${humanize(d.category as string)} (${humanize(d.recoveryProbability as string)} recovery odds)`,
-        accent: "text-blue-300",
+        accent: "text-sky-300",
       };
     case "recommend":
-      return { text: `AI recommends — ${name}: ${humanize(d.suggestedAction as string)}`, accent: "text-blue-300" };
+      return { text: `AI recommends — ${name}: ${humanize(d.suggestedAction as string)}`, accent: "text-sky-300" };
     case "agent_proposals": {
       const actions = Array.isArray(d.proposedActions) ? (d.proposedActions as string[]) : [];
       const unique = [...new Set(actions)];
@@ -32,7 +32,7 @@ export function narrateEvent(event: BatchStreamEvent): NarrativeLine {
           unique.length > 1
             ? `Agents disagree — ${name}: ${unique.map(humanize).join(" vs ")}`
             : `Agents agree — ${name}: ${humanize(unique[0])}`,
-        accent: unique.length > 1 ? "text-amber-300" : "text-violet-300",
+        accent: unique.length > 1 ? "text-amber-300" : "text-indigo-300",
       };
     }
     case "shared_context_conflict": {
@@ -40,7 +40,7 @@ export function narrateEvent(event: BatchStreamEvent): NarrativeLine {
       const promise = d.hasActivePromise ? ", active promise on file" : "";
       return {
         text: `Shared memory checked — ${name}: ${prior === 0 ? "no prior history" : `${prior} prior decision${prior === 1 ? "" : "s"}`}${promise}`,
-        accent: "text-violet-300",
+        accent: "text-indigo-300",
       };
     }
     case "final_decision":
@@ -57,20 +57,20 @@ export function narrateEvent(event: BatchStreamEvent): NarrativeLine {
     case "execute":
       return {
         text: `Executing — ${name}: ${humanize(d.actionType as string)}${d.provider === "razorpay" ? " via real Razorpay link" : ""}`,
-        accent: "text-violet-300",
+        accent: "text-indigo-300",
       };
     case "verify":
       return d.verified
         ? { text: `Recovered — ${name}: ${formatInrCompact(Number(d.amountRecovered ?? 0))} confirmed`, accent: "text-emerald-300" }
         : { text: `Not yet recovered — ${name}`, accent: "text-zinc-400" };
     case "escalate":
-      return { text: `Escalated to human — ${name}`, accent: "text-violet-300" };
+      return { text: `Escalated to human — ${name}`, accent: "text-indigo-300" };
     case "stop":
-      return { text: `Stopped — ${name}: not worth pursuing further`, accent: "text-red-300" };
+      return { text: `Stopped — ${name}: not worth pursuing further`, accent: "text-rose-300" };
     case "defer":
       return { text: `Deferred — ${name}: cooldown active`, accent: "text-zinc-400" };
     case "error":
-      return { text: `Error — ${name}: ${String(d.error ?? "unknown error")}`, accent: "text-red-400" };
+      return { text: `Error — ${name}: ${String(d.error ?? "unknown error")}`, accent: "text-rose-400" };
     case "batch_complete": {
       const recovered = typeof d.totalRecovered === "number" ? formatInrCompact(d.totalRecovered) : null;
       const seconds = typeof d.durationMs === "number" ? (d.durationMs / 1000).toFixed(1) : null;
