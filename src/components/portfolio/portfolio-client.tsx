@@ -69,7 +69,7 @@ export function PortfolioClient() {
   const maxScore = Math.max(...opportunities.map((o) => o.priorityScore), 1);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 px-5 py-8 md:px-8">
+    <div className="page-shell space-y-5 py-8">
       <div className="rise flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-medium tracking-[0.18em] text-emerald-400 uppercase">
@@ -128,7 +128,22 @@ export function PortfolioClient() {
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[54rem] border-collapse">
+            <table className="w-full min-w-[62rem] table-fixed border-collapse">
+              {/* Without explicit widths the browser spreads all eight columns
+                  evenly, so in the wider frame "Age" and "Odds" — two or three
+                  characters each — ended up as wide as the customer column.
+                  Pinning the short columns lets the customer name and the
+                  priority bar absorb the extra width instead. */}
+              <colgroup>
+                <col className="w-12" />
+                <col className="w-[15rem]" />
+                <col className="w-[11rem]" />
+                <col className="w-[9rem]" />
+                <col className="w-[4.5rem]" />
+                <col className="w-[4.5rem]" />
+                <col className="w-[9rem]" />
+                <col />
+              </colgroup>
               <thead>
                 <tr className="border-b border-white/[0.07]">
                   {["#", "Customer", "Risk", "Amount", "Age", "Odds", "Decision", "Priority score"].map((h) => (

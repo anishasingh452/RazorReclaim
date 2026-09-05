@@ -1,27 +1,50 @@
 import { getServiceClient } from "@/lib/db/service-client";
 
-const DEFAULT_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"; // "Sarah" — mature, reassuring, confident; multilingual model handles the Hinglish text
+// "Bella — Professional, Bright, Warm". A recovery call has to sound like a
+// person who wants to help rather than a dunning notice, so warmth matters as
+// much as clarity here. The previous default paired an entertainment-tuned
+// voice with romanised Hinglish, which the multilingual model pronounced using
+// English phonetics and rendered close to unintelligible; scripts now default
+// to English (see collections-script.ts) and this voice reads them cleanly
+// through a room's speakers.
+//
+// Must be a voice the account can actually reach — library voices return 402
+// on the free tier, so this is one of the always-available premade voices.
+const DEFAULT_VOICE_ID = "hpp4J3VqNfWAUOO0d1Us";
 const STORAGE_BUCKET = "voice-recordings";
 
 export function elevenLabsConfigured(): boolean {
   return !!process.env.ELEVENLABS_API_KEY;
 }
 
-/** Real ElevenLabs TTS call — synthesizes the given Hinglish script into speech. */
+/** Real ElevenLabs TTS call — synthesizes the given collections script into speech. */
 export async function synthesizeSpeech(text: string): Promise<Buffer> {
   const apiKey = process.env.ELEVENLABS_API_KEY;
   if (!apiKey) throw new Error("Missing ELEVENLABS_API_KEY");
   const voiceId = process.env.ELEVENLABS_VOICE_ID || DEFAULT_VOICE_ID;
 
-  const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
-    method: "POST",
-    headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({
-      text,
-      model_id: "eleven_multilingual_v2",
-      voice_settings: { stability: 0.5, similarity_boost: 0.75 },
-    }),
-  });
+  // 128kbps rather than the API default, so the recording still sounds clean
+  // through a projector's speakers. The multilingual model is kept because
+  // the Hindi and Hinglish script options still route through here.
+  const res = await fetch(
+    `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
+    {
+      method: "POST",
+      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        // Higher stability and speaker boost trade a little expressiveness for
+        // even, intelligible delivery — the right trade for a business call.
+        voice_settings: {
+          stability: 0.55,
+          similarity_boost: 0.8,
+          style: 0.1,
+          use_speaker_boost: true,
+        },
+      }),
+    }
+  );
 
   if (!res.ok) {
     throw new Error(`ElevenLabs TTS failed: ${res.status} ${await res.text()}`);

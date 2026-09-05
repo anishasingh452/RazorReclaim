@@ -55,7 +55,7 @@ export default async function ApprovalsPage() {
   const conflicted = new Set((conflictRows ?? []).map((c) => c.case_id));
 
   return (
-    <div className="mx-auto max-w-5xl space-y-5 px-5 py-8 md:px-8">
+    <div className="page-shell space-y-5 py-8">
       <div className="rise flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1.5">
           <div className="flex items-center gap-1.5 text-[10px] font-medium tracking-[0.18em] text-amber-400 uppercase">

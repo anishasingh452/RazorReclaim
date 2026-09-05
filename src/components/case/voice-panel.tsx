@@ -69,7 +69,7 @@ export function VoicePanel({
                 </div>
                 {/* Native controls: fully accessible and keyboard-operable
                     without shipping a custom player for one element. */}
-                <audio controls preload="none" src={call.audio_url} className="w-full">
+                <audio controls preload="metadata" src={call.audio_url} className="w-full">
                   Your browser does not support audio playback.
                 </audio>
               </div>

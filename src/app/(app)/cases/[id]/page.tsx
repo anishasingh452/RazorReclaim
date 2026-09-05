@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Radio, Sparkles, Stethoscope } from "lucide-react";
+import { ArrowLeft, AudioLines, Radio, Sparkles, Stethoscope } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { getCaseDetail } from "@/lib/cases/get-case-detail";
 import {
@@ -92,7 +92,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
   });
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 px-5 py-8 md:px-8">
+    <div className="page-shell space-y-5 py-8">
       <Link
         href="/command-center"
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground transition-colors hover:text-emerald-300"
@@ -188,7 +188,7 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <div className="micro-label text-amber-300/80">Human decision required</div>
-              <p className="mt-1.5 max-w-md text-sm text-muted-foreground">
+              <p className="mt-1.5 max-w-2xl text-sm text-muted-foreground">
                 Policy routed this case out of automation. Approving resumes execution from where the graph paused.
               </p>
             </div>
@@ -246,13 +246,27 @@ export default async function CasePage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Deep dive */}
-      <Tabs defaultValue="agents" className="rise" style={{ "--d": "280ms" } as React.CSSProperties}>
+      {/* A case with a recording opens on it. The playable audio is the least
+          expected thing here and the easiest to walk past, so it shouldn't be
+          behind a tab you have to know to look for. */}
+      <Tabs
+        defaultValue={voiceInteractions.length > 0 ? "voice" : "agents"}
+        className="rise"
+        style={{ "--d": "280ms" } as React.CSSProperties}
+      >
         <TabsList variant="line" className="flex-wrap">
           <TabsTrigger value="agents">Agents</TabsTrigger>
           <TabsTrigger value="impact">Impact ledger</TabsTrigger>
           <TabsTrigger value="policy">Guardrails</TabsTrigger>
           <TabsTrigger value="execution">Execution</TabsTrigger>
-          {voiceInteractions.length > 0 && <TabsTrigger value="voice">Voice</TabsTrigger>}
+          {voiceInteractions.length > 0 && (
+            <TabsTrigger value="voice">
+              <span className="flex items-center gap-1.5">
+                <AudioLines className="size-3.5 text-teal-300" />
+                Voice recording
+              </span>
+            </TabsTrigger>
+          )}
           <TabsTrigger value="evidence">Evidence</TabsTrigger>
           <TabsTrigger value="graph">Decision graph</TabsTrigger>
         </TabsList>

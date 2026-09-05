@@ -20,7 +20,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       <header className="sticky top-0 z-40 border-b border-white/[0.06] bg-background/70 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 max-w-[1500px] items-center gap-6 px-5 md:px-8">
+        <div className="page-shell flex h-14 items-center gap-6">
           {/* The wordmark is the way back out of the product to the landing
               page — the standard place people look for it, and the header is
               on every product page, so that exit is always one click away.

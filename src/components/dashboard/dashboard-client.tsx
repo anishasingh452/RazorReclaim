@@ -191,7 +191,7 @@ export function DashboardClient() {
   }, [detail]);
 
   return (
-    <div className="mx-auto max-w-[1500px] space-y-5 px-5 py-8 md:px-8">
+    <div className="page-shell space-y-5 py-8">
       {/* Hero */}
       <div className="rise flex flex-wrap items-end justify-between gap-4">
         <div className="space-y-1.5">

@@ -163,6 +163,30 @@
 }
 
 @layer utilities {
+  /* ---------- Page frame ---------- */
+
+  /* One container for the command bar and every page under it. These used to
+     be four different max-widths (5xl on Approvals and Conflicts, 6xl on
+     Portfolio and Case Detail, 1500px on the header and Command Center),
+     which left the narrower pages sitting in ~400px of dead margin inside a
+     wider header. Defining the frame once means the pages can't drift apart
+     again. The gutter opens up with the viewport instead of stepping, so
+     there's no width where the content suddenly hugs the edge. */
+  .page-shell {
+    width: 100%;
+    max-width: 1500px;
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 3.5vw, 3rem);
+  }
+
+  /* Running prose inside a 1500px frame would set far too long a line, so
+     text that is read as sentences — page intros, agent rationales, the
+     no-action explanation — keeps its own measure rather than inheriting the
+     frame's. ~68 characters at the sizes used here. */
+  .prose-measure {
+    max-width: 62ch;
+  }
+
   /* ---------- Surfaces ---------- */
 
   /* The product's primary surface. A defined edge and an almost-flat fill

@@ -22,7 +22,7 @@ import type { Case, CaseStatus, ExecutionProvider, ExecutionStatus } from "@/typ
  *    would speak is REALLY synthesized via ElevenLabs (multilingual model)
  *    and uploaded to Supabase Storage — a genuine artifact, not a
  *    fabricated one. Script language is VOICE_LANGUAGE ("english" | "hindi"
- *    | "hinglish", default "hinglish"). Falls back to pure simulation
+ *    | "hinglish", default "english"). Falls back to pure simulation
  *    (audio_url stays null) if the key is absent or synthesis fails.
  *  - stop / no_action: no external call — recorded as a real execution row
  *    (provider "none") so the executions ledger is the single source of
@@ -117,10 +117,10 @@ export async function executeNode(state: CaseGraphState): Promise<CaseGraphUpdat
 
 const VALID_LANGUAGES: readonly ScriptLanguage[] = ["english", "hindi", "hinglish"];
 
-/** Reads VOICE_LANGUAGE ("english" | "hindi" | "hinglish"), defaulting to hinglish. */
+/** Reads VOICE_LANGUAGE ("english" | "hindi" | "hinglish"), defaulting to english. */
 function resolveVoiceLanguage(): ScriptLanguage {
   const raw = process.env.VOICE_LANGUAGE?.toLowerCase();
-  return (VALID_LANGUAGES as readonly string[]).includes(raw ?? "") ? (raw as ScriptLanguage) : "hinglish";
+  return (VALID_LANGUAGES as readonly string[]).includes(raw ?? "") ? (raw as ScriptLanguage) : "english";
 }
 
 async function recordVoiceInteraction(
