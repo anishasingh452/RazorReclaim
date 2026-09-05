@@ -121,17 +121,36 @@ permitted or what things are worth.
 
 ## Architecture
 
+```mermaid
+flowchart TB
+  S(["START"]) --> D["detect"]
+  D --> RC["root_cause &mdash; LLM"]
+  RC --> RM["recommend &mdash; LLM"]
+  RM --> AG["agent_proposals"]
+  AG --> SC["shared_context_conflict"]
+  SC --> BI["business_impact &mdash; deterministic ERV"]
+  BI --> PO["policy &mdash; 7 guardrails"]
+  PO --> FD["final_decision + Why Not To Act"]
+  FD -->|escalate| ES["escalate"] --> E(["END"])
+  FD -->|wait_and_retry| DF["defer"] --> E
+  FD -->|"retry, payment_link, reminder, voice, stop, no_action"| EX["execute"]
+  EX -->|"retry or voice"| VF["verify"] --> E
+  EX -->|"everything else, or failed"| E
 ```
-Batch run (SSE)
-  └─ Batch Orchestrator ── recovers interrupted cases first, then fans out
-       └─ per case: LangGraph StateGraph
-            detect → root-cause → agent-proposals → shared-context-conflict
-                   → recommend → candidates → business-impact → policy
-                   → final-decision → { execute | escalate | defer }
-                   → verify
-                        ↓ every node
-                   append-only hash-chained audit_log
-```
+
+A batch run holds a POST response open and streams progress over SSE while the
+Batch Orchestrator sweeps for cases left mid-flight by an interrupted run, then
+fans the rest out with bounded concurrency. Each case runs the graph above in
+isolation, and every node appends to that case's hash-chained `audit_log`.
+
+Exactly two nodes call the language model: `root_cause` and `recommend`.
+`agent_proposals` reuses the LLM's recommendation as the AI Recovery Agent and
+runs the deterministic Channel Strategy Agent beside it, which is why the two
+can genuinely disagree. `business_impact` calls the Candidate Action Engine to
+rule out structurally impossible actions, prices what remains, and settles any
+conflict on expected value. Note that `stop` and `no_action` still flow through
+`execute`: deliberate non-engagement is recorded in the executions ledger like
+any other decision.
 
 - **`src/lib/langgraph/`** — the per-case graph and its nodes.
 - **`src/lib/agents/`** — the two competing agents and conflict detection.
