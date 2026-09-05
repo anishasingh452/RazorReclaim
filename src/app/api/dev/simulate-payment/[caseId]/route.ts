@@ -43,7 +43,7 @@ export async function POST(_req: NextRequest, { params }: { params: Promise<{ ca
       reason: outcome.reason,
       message:
         outcome.reason === "not_paid"
-          ? `Razorpay reports this link as "${outcome.status}" — not paid yet, so nothing was recorded.`
+          ? `Razorpay reports this link as "${outcome.status}" - not paid yet, so nothing was recorded.`
           : "No Razorpay execution found for this case.",
     });
   }
