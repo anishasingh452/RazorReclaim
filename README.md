@@ -77,7 +77,7 @@ Not acting is a decision. It should be argued for, and it should be auditable.
 | **Approval Queue** | Human-in-the-loop for high-value and policy-flagged cases. Approving resumes the graph from where it paused. |
 | **Case Detail** | The complete decision record: evidence, root cause, both agent proposals, the full ERV ledger (including ruled-out actions and why), every policy check, the audit chain. |
 | **Shared Agent Memory** | Customers recur across cases. Prior recovery history feeds the next decision — a customer who ignored two reminders is treated differently from a first-timer. |
-| **Voice Recovery (ElevenLabs)** | For high-value B2B receivables, the agent writes a collections script and ElevenLabs synthesises it. Hinglish by default, with English and Hindi options. The audio is real and playable on the case page. |
+| **Voice Recovery (ElevenLabs)** | For high-value B2B receivables, the agent writes a collections script and ElevenLabs synthesises it. Clear English by default, with Hindi and Hinglish available via `VOICE_LANGUAGE`. The audio is real and playable on the case page. |
 | **Promises to Pay** | Voice interactions can produce a commitment date, which becomes a scheduled follow-up. |
 | **Scheduled Actions** | `wait_and_retry` and deferred follow-ups are persisted as real scheduled work, not fire-and-forget. |
 | **Interrupted-batch recovery** | If a run dies mid-batch, stuck cases are classified and safely resumed or reset on the next run — without duplicating a single executed action, and without ever rewriting the audit chain. |
@@ -103,11 +103,13 @@ I'd rather be boring and accurate here than oversell it.
 - **Payment retries** — the `retry` action is modelled, not submitted to the
   gateway.
 - **The demo payment trigger** — in a live demo you don't want to stop and pay a
-  link by hand, so there's a button that triggers verification. It calls the
-  *exact same* `verifyPaymentLinkPaid()` function the real webhook calls and asks
-  Razorpay for the link's real status. It is not a fake-success path. The only
-  difference recorded is `verifications.source: 'simulated_trigger'` vs
-  `'webhook'`, and the UI shows which is which.
+  link by hand, so there's a button that re-checks it on demand. It cannot make a
+  payment succeed: it calls the *exact same* `verifyPaymentLinkPaid()` the webhook
+  calls, which asks Razorpay for the link's real status and records nothing unless
+  Razorpay says paid. The only difference recorded is
+  `verifications.source: 'simulated_trigger'` vs `'webhook'`, and the case page
+  labels them "Demo-triggered on a real link" and "Real Razorpay webhook"
+  respectively. (This was not true until late on — see *What broke at 2 AM*.)
 - **The case data itself** — synthetic, generated to cover realistic scenario
   mixes. Customer emails are plus-addressed off one real inbox so the emails go
   somewhere you can actually check.
@@ -239,7 +241,7 @@ if this were going anywhere near production.
 
 ## What broke at 2 AM
 
-Four bugs that were genuinely worth the sleep. All four are fixed; I'm keeping
+Five bugs that were genuinely worth the sleep. All five are fixed; I'm keeping
 them written down because how you find a bug is usually more interesting than the
 bug itself.
 
@@ -283,6 +285,31 @@ auditable. Anyone who checked would have caught the system misreporting its own
 working. Fixed by rounding first and then pricing from the rounded value, so the
 stored number and the priced number are the same number. The regression test now
 recomputes every feasible row and demands an exact match.
+
+**5. The verification step didn't verify anything.**
+The worst one, and the last one found. `verifyPaymentLinkPaid()` is the single
+code path behind both the Razorpay webhook and the demo confirm button. It
+looked up the execution, wrote `verified: true`, marked the case recovered,
+credited the full invoice amount, and wrote a decision-memory row saying the
+recovery had worked — **without ever asking Razorpay whether the link had been
+paid.** The webhook path was still sound, because Razorpay only emits
+`payment_link.paid` for a link it considers paid. The demo button was not: it
+marked revenue recovered on demand.
+
+It surfaced while I was building a demo case map and cross-checked the database
+against the Razorpay API. Two cases claimed ₹7,140 recovered between them;
+Razorpay reported both links as `created`, `amount_paid: 0`. Nothing in the app
+disagreed with itself — the UI, the audit log and the KPIs all faithfully
+reported a recovery that had never happened, which is exactly why it survived
+so long.
+
+The fix makes Razorpay the only authority on whether money moved: the function
+now fetches the link, records nothing at all unless it comes back paid, and
+credits Razorpay's own `amount_paid` rather than the invoice total, so a partial
+payment can't be booked as a full recovery. The two false records were removed
+and those cases returned to `in_progress`. For a product whose entire claim is
+that outcomes are verified rather than assumed, this was the worst possible bug
+to ship, and I nearly demoed it.
 
 ## Things I'd change with more time
 

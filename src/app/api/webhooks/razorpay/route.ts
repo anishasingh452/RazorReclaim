@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   let event: {
     event?: string;
-    payload?: { payment_link?: { entity?: { id?: string } }; payment?: { entity?: { amount?: number } } };
+    payload?: { payment_link?: { entity?: { id?: string } } };
   };
   try {
     event = JSON.parse(rawBody);
@@ -34,9 +34,19 @@ export async function POST(req: NextRequest) {
 
   if (event.event === "payment_link.paid") {
     const paymentLinkId = event.payload?.payment_link?.entity?.id;
-    const amountPaidPaise = event.payload?.payment?.entity?.amount;
     if (paymentLinkId) {
-      await verifyPaymentLinkPaid(paymentLinkId, "webhook", amountPaidPaise);
+      // Razorpay only emits this event for a link it considers paid, but the
+      // verification still re-reads the link's status from the API rather
+      // than trusting the payload — one code path, one source of truth, and
+      // the recorded amount is always Razorpay's own figure.
+      const outcome = await verifyPaymentLinkPaid(paymentLinkId, "webhook");
+      if (!outcome.verified) {
+        console.warn(
+          `razorpay webhook: payment_link.paid for ${paymentLinkId} but the API does not report it paid (${
+            outcome.reason === "not_paid" ? outcome.status : outcome.reason
+          }) — nothing recorded.`
+        );
+      }
     }
   }
 
